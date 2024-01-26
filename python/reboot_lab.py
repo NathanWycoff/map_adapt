@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-#  python/reboot.py Author "Nathan Wycoff <nathanbrwycoff@gmail.com>" Date 01.26.2024
+#  python/reboot_lab.py Author "Nathan Wycoff <nathanbrwycoff@gmail.com>" Date 01.26.2024
 
 exec(open("python/jax_nsa.py").read())
 exec(open("python/jax_hier_lib.py").read())
@@ -140,21 +140,34 @@ elif sim == 'libsvm':
 else:
     raise Exception("Dataset not recognized.")
 
-assert sparsity_type=='random'
-mod = jax_vlMAP(X, y, adaptive_prior, {}, logprox = True)
 
 iters = 10000
-#iters = 300
 
-#lr = 5e-1/N
-#tau0 = 0.2 * N
-tau0 = 0.1 * N
-prop_es = 0.1
-#mb_size = 256
-mb_size = 1024
-#mb_size = N
-lr = 5e-2 / N
-#lr = 5e-3 / mb_size
+#prop_es = 0.1
+N_es = 1000
+mb_size = 256
+es_patience = 500 # in iterations
+
+ind_es = np.random.choice(N,N_es,replace=False)
+ind_train = np.setdiff1d(np.arange(N), ind_es)
+X_es = X[ind_es,:]
+y_es = y[ind_es]
+X_train = X[ind_train,:]
+y_train = y[ind_train]
+
+assert sparsity_type=='random'
+mod = jax_vlMAP(X_train, y_train, adaptive_prior, {}, logprox = True, mb_size = mb_size)
+
+lr = 5e-2 / mod.N
+tau0 = 0.1 * mod.N
+
+verbose = True
+
+batches_per_epoch = int(np.ceil(mod.N / mod.mb_size))
+assert batches_per_epoch==mod.batches_per_epoch
+svrg_every = mod.batches_per_epoch
+es_every = mod.batches_per_epoch
+es_num = int(np.ceil(iters / es_every))
 
 ss = {}
 for v in mod.vv:
@@ -167,25 +180,64 @@ def get_sd2(grad_nll, grad_prior, ss, mb_size, N):
         sd[v] = -(N/mb_size*grad_nll[v] + grad_prior[v])
     return sd
 
-costs = np.zeros(iters)*np.nan
-for i in tqdm(range(iters)):
-    ind = np.random.choice(N,mb_size,replace=False)
+@jit
+def get_sd_svrg(grad_nll, grad_nll0, g0, grad_prior, ss, mb_size, N):
+    sd = {}
+    for v in grad_nll:
+        sd[v] = -(N/mb_size*(grad_nll[v] - grad_nll0[v]) + g0[v]  + grad_prior[v])
+    return sd
 
-    cost_nll, grad_nll = mod.eval_nll_grad_subset(mod.vv, X[ind,:], y[ind])
+costs = np.zeros(iters)*np.nan
+nll_es = np.zeros(es_num)*np.nan
+for i in tqdm(range(iters)):
+
+    if i % svrg_every==0:
+        mod.vv0 = {}
+        for v in mod.vv:
+            mod.vv0[v] = jnp.copy(mod.vv[v])
+
+        g0 = dict([(v, np.zeros_like(mod.vv[v])) for v in mod.vv])
+        for iti in tqdm(range(batches_per_epoch), leave=False, disable = not verbose):
+            samp_vr = np.arange(iti*mod.mb_size,np.minimum((iti+1)*mod.mb_size,mod.N))
+            Xs_vr = mod.X[samp_vr, :]
+            ys_vr = mod.y[samp_vr]
+            if mod.quad:
+                X_use_vr = expand_X(Xs_vr, mod.ind1_exp, mod.ind2_exp)  # Create interaction terms just in time.
+            else:
+                X_use_vr = Xs_vr  # Create interaction terms just in time.
+            _, grad_vr = mod.eval_nll_grad_subset(mod.vv0, X_use_vr, ys_vr)
+            for v in mod.vv:
+                g0[v] += grad_vr[v]
+
+    if i % es_every==0:
+        nll_es[i//es_every] = -np.sum(mod.predictive(X_es).log_prob(y_es))
+        best_it = np.nanargmin(nll_es) * es_every
+        if i-best_it > es_patience:
+            print("ES stop!")
+            break
+
+    ind = np.random.choice(mod.N,mod.mb_size,replace=False)
+
+    cost_nll, grad_nll = mod.eval_nll_grad_subset(mod.vv, mod.X[ind,:], mod.y[ind])
+    _, grad_nll0 = mod.eval_nll_grad_subset(mod.vv0, mod.X[ind,:], mod.y[ind])
     cost_prior, grad_prior = mod.eval_prior_grad(mod.vv, tau0)
 
-    costs[i] = N/mb_size*cost_nll + sum(cost_prior)
+    costs[i] = mod.N/mod.mb_size*cost_nll + sum(cost_prior)
     if not np.isfinite(costs[i]):
         print("Infinite cost!")
         break
 
     #sd = get_sd(grad, ss)
-    sd = get_sd2(grad_nll, grad_prior, ss, mb_size, N)
+    #sd = get_sd2(grad_nll, grad_prior, ss, mod.mb_size, N)
+    sd = get_sd_svrg(grad_nll, grad_nll0, g0, grad_prior, ss, mod.mb_size, mod.N)
     next_vv = get_vv_at(mod.vv, sd, ss, lr, tau0)
     mod.vv = next_vv
 
 fig = plt.figure()
 plt.plot(costs)
+ax = plt.gca()
+ax1 = ax.twinx()
+ax1.plot(es_every*np.arange(es_num), nll_es, color = 'orange')
 plt.savefig("temp.pdf")
 plt.close()
 
@@ -200,3 +252,5 @@ np.where(beta!=0)
 #if manual:
 #    for i in range(10):
 #        print("Manual")
+
+
