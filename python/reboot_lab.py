@@ -16,7 +16,12 @@ np.random.seed(123)
 if manual:
     for i in range(10):
         print("Manual")
-    s_i = '0'
+    #s_i = '0'
+    #s_i = '1'
+    #s_i = '2'
+    #s_i = '3'
+    #s_i = '4'
+    s_i = '5'
     seed = 123
 else:
     print(sys.argv)
@@ -141,12 +146,14 @@ else:
     raise Exception("Dataset not recognized.")
 
 
-iters = 10000
+#iters = 10000
+iters = 100000
 
 #prop_es = 0.1
 N_es = 1000
 mb_size = 256
 es_patience = 500 # in iterations
+#es_patience = np.inf
 
 ind_es = np.random.choice(N,N_es,replace=False)
 ind_train = np.setdiff1d(np.arange(N), ind_es)
@@ -156,10 +163,10 @@ X_train = X[ind_train,:]
 y_train = y[ind_train]
 
 assert sparsity_type=='random'
-mod = jax_vlMAP(X_train, y_train, adaptive_prior, {}, logprox = True, mb_size = mb_size)
+mod = jax_vlMAP(X_train, y_train, adaptive_prior, {}, logprox = True, mb_size = mb_size, lik = lik)
 
-lr = 5e-2 / mod.N
-tau0 = 0.1 * mod.N
+lr = 1e-2 / mod.N 
+tau0 = 0.1 * mod.N 
 
 verbose = True
 
@@ -188,6 +195,7 @@ def get_sd_svrg(grad_nll, grad_nll0, g0, grad_prior, ss, mb_size, N):
     return sd
 
 costs = np.zeros(iters)*np.nan
+sparsity = np.zeros(iters)*np.nan
 nll_es = np.zeros(es_num)*np.nan
 for i in tqdm(range(iters)):
 
@@ -218,11 +226,13 @@ for i in tqdm(range(iters)):
 
     ind = np.random.choice(mod.N,mod.mb_size,replace=False)
 
+    # TODO: Expand quadratic boy here.
     cost_nll, grad_nll = mod.eval_nll_grad_subset(mod.vv, mod.X[ind,:], mod.y[ind])
     _, grad_nll0 = mod.eval_nll_grad_subset(mod.vv0, mod.X[ind,:], mod.y[ind])
     cost_prior, grad_prior = mod.eval_prior_grad(mod.vv, tau0)
 
     costs[i] = mod.N/mod.mb_size*cost_nll + sum(cost_prior)
+    sparsity[i] = np.mean(mod.vv['beta']==0)
     if not np.isfinite(costs[i]):
         print("Infinite cost!")
         break
@@ -237,17 +247,20 @@ fig = plt.figure()
 plt.plot(costs)
 ax = plt.gca()
 ax1 = ax.twinx()
-ax1.plot(es_every*np.arange(es_num), nll_es, color = 'orange')
+#ax1.plot(es_every*np.arange(es_num), nll_es, color = 'orange')
+eps = 1e-8
+ax1.plot(es_every*np.arange(es_num), np.log10(nll_es+eps-np.nanmin(nll_es)), color = 'orange')
+#ax1.plot(sparsity, color = 'orange')
 plt.savefig("temp.pdf")
 plt.close()
 
-
 print(mod.vv['beta'][:10])
 
-print("estimate locs:")
+print("estimate")
 print(np.where(mod.vv['beta']!=0))
+print(mod.vv['beta'][mod.vv['beta']!=0])
 print("true locs:")
-np.where(beta!=0)
+print(beta[beta!=0])
 
 #if manual:
 #    for i in range(10):

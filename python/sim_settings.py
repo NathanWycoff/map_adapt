@@ -16,8 +16,10 @@ Ns = [1000]
 
 sim = 'synthetic'
 #sim = 'libsvm'
-beta_style = 'random'
-#beta_style = 'floor'
+#beta_style = 'random'
+beta_style = 'floor'
+for i in range(10):
+    print(beta_style)
 #beta_style = 'fixed'
 
 move_thresh = 1e-5
