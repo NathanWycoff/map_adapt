@@ -7,7 +7,7 @@ NN = 1000 #TODO: overwritten if libsvm.
 
 iters = 30
 #iters = 2
-Ns = [1000]
+Ns = [10000]
 
 #Pu = 200
 #Pnz = 20 
@@ -22,12 +22,12 @@ for i in range(10):
     print(beta_style)
 #beta_style = 'fixed'
 
-move_thresh = 1e-5
-max_iters = 10000# Last thing done
-#max_iters = 1000
+max_iters = 10000
+mb_size = 256
+lr = 1e-2
 
-sparsity_type = 'random' # Totally random sparsity
-#sparsity_type = 'group' #Group sparsity 
+#sparsity_type = 'random' # Totally random sparsity
+sparsity_type = 'group' #Group sparsity 
 #sparsity_type = 'hier2nd' #Overlapping group sparsity for hierarchical model.
 
 usejags = False
@@ -71,16 +71,20 @@ if usejags:
 
 settings = []
 for N in Ns:
-    if N == 1000:
-        Pu = 200
-        Pnz = 20
-    elif N == 100:
+    if N == 10000:
+        Pu = 1000
+        #Pnz = 20
+        Pnz = 1
+        for i in range(10):
+            print("PNZ 1!")
+    elif N == 10000:
         Pu = 20
         Pnz = 2
     else:
         raise Exception("N bad.")
-    settings += [(N,Pu,Pnz,'normal', 1e0),(N,Pu,Pnz,'normal', 1e-1),(N,Pu,Pnz,'normal', 1e-2),]+\
-            [(N,Pu,Pnz,'poisson', 1e0),(N,Pu,Pnz,'cauchy', 1e0),(N,Pu,Pnz,'bernoulli', 1e0)]
+    #settings += [(N,Pu,Pnz,'normal', 1e0),(N,Pu,Pnz,'normal', 1e-1),(N,Pu,Pnz,'normal', 1e-2),]+\
+    #        [(N,Pu,Pnz,'poisson', 1e0),(N,Pu,Pnz,'cauchy', 1e0),(N,Pu,Pnz,'bernoulli', 1e0)]
+    settings += [(N,Pu,Pnz,'normal', 1e0),(N,Pu,Pnz,'poisson', 1e0),(N,Pu,Pnz,'cauchy', 1e0),(N,Pu,Pnz,'bernoulli', 1e0)]
 
 reg_problems = ['abalone','housing','bodyfat','mpg','triazines','mg','hcr_all','hcr_eu']
 class_problems = ['diabetes','australian','heart','covtype']

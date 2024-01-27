@@ -1,5 +1,10 @@
 .venv/
+sim_out/*
+debug_out/*
+
+sim_args.txt
 
 *.pdf
+*.png
 *.swo
 *.swp

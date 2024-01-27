@@ -1,0 +1,9 @@
+start=`date +%s`
+python python/clean_dir_make_args.py 
+#parallel --jobs 20 --colsep ' ' --will-cite -a sim_args.txt python python/ada_sim.py
+#parallel --jobs 5 --colsep ' ' --will-cite -a sim_args.txt python python/ada_sim.py
+parallel --jobs 5 --colsep ' ' --will-cite -a sim_args.txt python python/ada_sim.py
+python python/plot_ada_sim2.py 
+end=`date +%s`
+runtime=$((end-start))
+echo $runtime

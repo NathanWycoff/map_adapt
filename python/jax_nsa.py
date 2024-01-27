@@ -77,69 +77,6 @@ def get_sd(grad, ss):
         sd[v] = -grad[v]*ss[v]
     return(sd)
 
-@jit 
-def eval_ls(vv, cand_vv, ss, grad_batch, cand_grad, cand_lr):
-    ss_scale = False
-    #ss_scale = True
-    
-    #import IPython; IPython.embed()
-    base_norm = 0.
-    for v in vv:
-        if ss_scale:
-            #base_norm += jnp.sum(jnp.square((vv[v]-cand_vv[v])*ss[v]))
-            base_norm += jnp.sum(jnp.square((vv[v]-cand_vv[v])/ss[v]))
-        else:
-            base_norm += jnp.sum(jnp.square(vv[v]-cand_vv[v]))
-    base_norm = 1/cand_lr * jnp.sqrt(base_norm)
-
-    # Check difference.
-    dd = 0
-    # Assuming the passed gradients were already hit by the preconditioner.
-    for v in vv:
-        if ss_scale:
-            # knob 3
-            #dd += jnp.sum(jnp.square((grad_batch[v]-cand_grad[v])/ss[v]))
-            dd += jnp.sum(jnp.square((grad_batch[v]-cand_grad[v])*ss[v]))
-        else:
-            dd += jnp.sum(jnp.square(grad_batch[v]-cand_grad[v]))
-    dd = jnp.sqrt(dd)
-    return base_norm, dd
-
-
-def lipschitz_search(lr_init, ss, sd, c_relax, vv, tau0, grad_batch, grad_samp, Xs, ys, max_ls_it = 20, ss_shrink = 5, debug = False):
-    cand_lr = lr_init
-
-    #ss_scale = True
-    ss_scale = False
-
-    dd = np.inf
-    base_norm = -np.inf
-    ls_it = 0
-    #sd = get_sd(g_search, ss)
-    if debug:
-        import IPython; IPython.embed()
-    while ((not np.isfinite(base_norm) or not np.isfinite(dd)) or (dd > c_relax * base_norm)) and ls_it < max_ls_it:
-        ls_it += 1
-
-        # Get gradlike step at candidate location
-        cand_vv = get_vv_at(vv, sd, ss, cand_lr, tau0)
-        _, cand_grad, _, _ = grad_samp(cand_vv, tau0, Xs, ys)
-
-        base_norm, dd = eval_ls(vv, cand_vv, ss, grad_batch, cand_grad, cand_lr)
-        
-        cand_lr /= ss_shrink
-
-    # Undo last shrnk
-    cand_lr *= ss_shrink
-
-    if ls_it == max_ls_it:
-        print("Warning: Lipschitz search failed.")
-        import IPython; IPython.embed()
-    if ls_it == 0:
-        print("Took no steps in lipschitz search????")
-        import IPython; IPython.embed()
-    return cand_lr
-
 class jax_vlMAP:
     auto_N_sg = 5000
     #auto_N_sg = 20000
@@ -482,7 +419,7 @@ class jax_vlMAP:
             # TODO: Expand quadratic boy here.
             cost_nll, grad_nll = self.eval_nll_grad_subset(self.vv, self.X[ind,:], self.y[ind])
             _, grad_nll0 = self.eval_nll_grad_subset(self.vv0, self.X[ind,:], self.y[ind])
-            cost_prior, grad_prior = self.eval_prior_grad(self.vv, tau0)
+            cost_prior, grad_prior = self.eval_prior_grad(self.vv, self.tau0)
 
             self.costs[i] = self.N/self.mb_size*cost_nll + sum(cost_prior)
             #self.sparsity[i] = np.mean(self.vv['beta']==0)
@@ -493,13 +430,15 @@ class jax_vlMAP:
             #sd = get_sd(grad, ss)
             #sd = get_sd2(grad_nll, grad_prior, ss, self.mb_size, N)
             sd = get_sd_svrg(grad_nll, grad_nll0, g0, grad_prior, ss, self.mb_size, self.N)
-            next_vv = get_vv_at(self.vv, sd, ss, lr, tau0)
+            next_vv = get_vv_at(self.vv, sd, ss, lr, self.tau0)
             self.vv = next_vv
             self.last_it = i
 
             if self.tracking:
                 for v in self.vv:
                     self.tracking[v][it] = self.vv[v]
+
+        self.beta = self.vv['beta']
 
     def _predictive(self, XX, vv):
         if self.sigma2_exp:
@@ -553,25 +492,25 @@ class jax_vlMAP:
         plt.plot(self.costs[:self.last_it])
         plt.title('Cost')
 
-        plt.subplot(nrows,ncols,2)
-        plt.plot(self.step_sizes[:self.last_it], label = 'step size')
-        plt.plot(self.reltols[:self.last_it], label = 'reltol')
-        plt.plot(self.beta_dinf[:self.last_it], label = r"$\beta$ dinf")
-        plt.legend(prop={'size':5})
-        plt.yscale('log')
-        plt.title('Convergence')
+        #plt.subplot(nrows,ncols,2)
+        ##plt.plot(self.step_sizes[:self.last_it], label = 'step size')
+        ##plt.plot(self.reltols[:self.last_it], label = 'reltol')
+        ##plt.plot(self.beta_dinf[:self.last_it], label = r"$\beta$ dinf")
+        #plt.legend(prop={'size':5})
+        #plt.yscale('log')
+        #plt.title('Convergence')
 
-        if self.is_stochastic:
-            plt.subplot(nrows,ncols,3)
-            plt.plot(self.grad_norm[:self.last_it], label = 'Stoch Grad Norm')
-            plt.plot(self.grad_norm_vr[:self.last_it], label = 'VR Grad Norm')
-            plt.legend(prop={'size':5})
-            plt.yscale('log')
-            plt.title('Gradient Norms')
-        else:
-            plt.subplot(nrows,ncols,3)
-            plt.plot(np.log10(1+self.costs[:self.last_it]-np.min(self.costs[:self.last_it])))
-            plt.title('Optimality Gap (log(1+))')
+        ##if self.is_stochastic:
+        #    plt.subplot(nrows,ncols,3)
+        #    plt.plot(self.grad_norm[:self.last_it], label = 'Stoch Grad Norm')
+        #    plt.plot(self.grad_norm_vr[:self.last_it], label = 'VR Grad Norm')
+        #    plt.legend(prop={'size':5})
+        #    plt.yscale('log')
+        #    plt.title('Gradient Norms')
+        #else:
+        plt.subplot(nrows,ncols,3)
+        plt.plot(np.log10(1+self.costs[:self.last_it]-np.min(self.costs[:self.last_it])))
+        plt.title('Optimality Gap (log(1+))')
 
         if self.track:
             for vi,v in enumerate(self.tracking):
