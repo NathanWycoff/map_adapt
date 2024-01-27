@@ -41,6 +41,12 @@ def expand_X(Xs, ind1_exp, ind2_exp):
     Xhs = jnp.concatenate([Xs, Xis, Xqs], axis=1)
     return Xhs
 
+@jit
+def get_sd_svrg(grad_nll, grad_nll0, g0, grad_prior, ss, mb_size, N):
+    sd = {}
+    for v in grad_nll:
+        sd[v] = -(N/mb_size*(grad_nll[v] - grad_nll0[v]) + g0[v]  + grad_prior[v])
+    return sd
 
 #vv = mod.vv
 #lr = ssi
@@ -138,7 +144,7 @@ class jax_vlMAP:
     auto_N_sg = 5000
     #auto_N_sg = 20000
 
-    def __init__(self, X, y, lam_prior, lam_prior_vars, big_N = None, tau0=1, lik='normal', mb_size = None, no_adapt = False, invlam = False, track = False, lam_accel = True, l2_coef = 0., dont_pen = None, do_jit = True, logprox = False, beta0_init = None, quad = False):
+    def __init__(self, X, y, lam_prior, lam_prior_vars, big_N = None, tau0=1, lik='normal', mb_size = None, no_adapt = False, invlam = False, track = False, lam_accel = True, l2_coef = 0., dont_pen = None, do_jit = True, logprox = False, beta0_init = None, quad = False, N_es = 1000, es_patience = 500):
         self.lik = lik
         self.tau0 = tau0
         self.big_N = big_N
@@ -153,10 +159,14 @@ class jax_vlMAP:
         self.l2_coef = l2_coef
         self.beta0_init = beta0_init 
         self.quad = quad
+        self.N_es = N_es
+        self.es_patience = es_patience # in iterations
         self.set_Xy(X, y)
         self.do_jit = do_jit
         self.firstfit = True
         #assert not self.quad
+
+
 
         # Stochastic gradient settings.
         if mb_size is None:
@@ -168,14 +178,17 @@ class jax_vlMAP:
             self.mb_size = mb_size
         if self.quad:
             self.mb_size = jax_vlMAP.auto_N_sg
-            Pu = self.X.shape[1]
-            self.ind1_exp = jnp.repeat(jnp.arange(Pu-1), 1+jnp.flip(jnp.arange(Pu-1)))
-            self.ind2_exp = jnp.concatenate([jnp.arange(p+1, Pu) for p in range(Pu)])
+            self.ind1_exp = jnp.repeat(jnp.arange(self.Pu-1), 1+jnp.flip(jnp.arange(self.Pu-1)))
+            self.ind2_exp = jnp.concatenate([jnp.arange(p+1, self.Pu) for p in range(self.Pu)])
 
         self.is_stochastic = self.mb_size < self.N
+
         #self.is_stochastic = True
         self.batches_per_epoch = int(np.ceil(self.N / self.mb_size))  # This is about ratio of dataset to mb_size.
-        self.ss_buff = np.repeat(np.inf, self.batches_per_epoch)
+
+        self.svrg_every = self.batches_per_epoch
+        self.es_every = self.batches_per_epoch
+
 
         assert not (self.logprox and self.invlam)
 
@@ -223,19 +236,31 @@ class jax_vlMAP:
         #self._compile_costs_updates(do_jit = self.do_jit)
 
     def set_Xy(self, X, y):
-        self.N, Pu = X.shape
+        N,self.Pu = X.shape
+
+        ind_es = np.random.choice(N,self.N_es,replace=False)
+        ind_train = np.setdiff1d(np.arange(N), ind_es)
+        X_es = X[ind_es,:]
+        y_es = y[ind_es]
+        X_train = X[ind_train,:]
+        y_train = y[ind_train]
+
+        self.N = X_train.shape[0]
 
         if self.quad:
-            self.P = 2*Pu + int(scipy.special.binom(Pu, 2))
+            self.P = 2*self.Pu + int(scipy.special.binom(self.Pu, 2))
         else:
-            self.P = Pu
+            self.P = self.Pu
 
         if self.lik=='zinb':
             self.Pb=2*self.P
         else:
             self.Pb = self.P
-        self.X = np.array(X)
-        self.y = np.array(y)
+
+        self.X = np.array(X_train)
+        self.y = np.array(y_train)
+        self.X_es = np.array(X_es)
+        self.y_es = np.array(y_es)
 
     def reset_vars(self):
         # NOTE: This is indeed X.shape[0], NOT N. (Oh, is it still tho?)
@@ -406,10 +431,75 @@ class jax_vlMAP:
     def init_adam(self):
         return dict([(v,np.zeros_like(self.vv[v])) for v in self.vv]), dict([(v,np.zeros_like(self.vv[v])) for v in self.vv])
 
-    def fit(self, max_iters = 10000, pc = 'identity', conv_thresh = 1e-10, verbose = True, debug = np.inf, ss_every = 1, move_thresh = 1e-5, start_skip = 500, svrg = None, c_relax = 1e0, hoardlarge = False, accel = False):
+    def fit(self, max_iters = 10000, lr_pre=1e-2, verbose = True, debug = np.inf, hoardlarge = False):
         global GLOB_prox
+        lr = lr_pre / self.N
 
-        raise NotImplementedError()
+        es_num = int(np.ceil(max_iters / self.es_every))
+
+        ss = {}
+        for v in self.vv:
+            ss[v] = np.ones_like(self.vv[v])
+
+        self.costs = np.zeros(max_iters)*np.nan
+        #self.sparsity = np.zeros(max_iters)*np.nan
+        self.nll_es = np.zeros(es_num)*np.nan
+
+        self.tracking = {}
+        if self.track:
+            for v in self.vv:
+                self.tracking[v] = np.zeros((max_max_iters,)+self.vv[v].shape)
+
+        for i in tqdm(range(max_iters), disable = not verbose):
+
+            if i % self.svrg_every==0:
+                self.vv0 = {}
+                for v in self.vv:
+                    self.vv0[v] = jnp.copy(self.vv[v])
+
+                g0 = dict([(v, np.zeros_like(self.vv[v])) for v in self.vv])
+                for iti in tqdm(range(self.batches_per_epoch), leave=False, disable = not verbose):
+                    samp_vr = np.arange(iti*self.mb_size,np.minimum((iti+1)*self.mb_size,self.N))
+                    Xs_vr = self.X[samp_vr, :]
+                    ys_vr = self.y[samp_vr]
+                    if self.quad:
+                        X_use_vr = expand_X(Xs_vr, self.ind1_exp, self.ind2_exp)  # Create interaction terms just in time.
+                    else:
+                        X_use_vr = Xs_vr  # Create interaction terms just in time.
+                    _, grad_vr = self.eval_nll_grad_subset(self.vv0, X_use_vr, ys_vr)
+                    for v in self.vv:
+                        g0[v] += grad_vr[v]
+
+            if i % self.es_every==0:
+                self.nll_es[i//self.es_every] = -np.sum(self.predictive(self.X_es).log_prob(self.y_es))
+                best_it = np.nanargmin(self.nll_es) * self.es_every
+                if i-best_it > self.es_patience:
+                    print("ES stop!")
+                    break
+
+            ind = np.random.choice(self.N,self.mb_size,replace=False)
+
+            # TODO: Expand quadratic boy here.
+            cost_nll, grad_nll = self.eval_nll_grad_subset(self.vv, self.X[ind,:], self.y[ind])
+            _, grad_nll0 = self.eval_nll_grad_subset(self.vv0, self.X[ind,:], self.y[ind])
+            cost_prior, grad_prior = self.eval_prior_grad(self.vv, tau0)
+
+            self.costs[i] = self.N/self.mb_size*cost_nll + sum(cost_prior)
+            #self.sparsity[i] = np.mean(self.vv['beta']==0)
+            if not np.isfinite(self.costs[i]):
+                print("Infinite cost!")
+                break
+
+            #sd = get_sd(grad, ss)
+            #sd = get_sd2(grad_nll, grad_prior, ss, self.mb_size, N)
+            sd = get_sd_svrg(grad_nll, grad_nll0, g0, grad_prior, ss, self.mb_size, self.N)
+            next_vv = get_vv_at(self.vv, sd, ss, lr, tau0)
+            self.vv = next_vv
+            self.last_it = i
+
+            if self.tracking:
+                for v in self.vv:
+                    self.tracking[v][it] = self.vv[v]
 
     def _predictive(self, XX, vv):
         if self.sigma2_exp:
@@ -444,34 +534,6 @@ class jax_vlMAP:
 
     def predictive(self, XX):
         return self._predictive(XX, self.vv)
-
-    def oos_lam(self, prop_out = 0.1, n_tau = 10, lam_iters = 100, **kwargs):
-        tau_grid = np.logspace(-5,5,num=n_tau)
-
-        out_set = np.sort(np.random.choice(self.X.shape[0], int(np.ceil(self.X.shape[0]*prop_out)), replace = False))
-        in_set = np.array(list(set(np.arange(self.X.shape[0])).difference(out_set)))
-
-        all_X = self.X
-        all_y = self.y
-        self.set_Xy(self.X[in_set,:], self.y[in_set])
-
-        nlls = np.zeros(n_tau)*np.nan
-        mi = kwargs['max_iters']
-        verb = kwargs['verbose']
-        kwargs['max_iters'] = lam_iters
-        for ti, TAU0 in enumerate(tau_grid):
-            self.tau0 = TAU0
-            self.reset_vars()
-            self.fit(**kwargs)
-            nll = -jnp.sum(self.predictive(all_X[out_set,:]).log_prob(all_y[out_set]))
-            nlls[ti] = nll
-
-        kwargs['max_iters'] = mi
-        kwargs['verbose'] = verb
-        self.set_Xy(all_X, all_y)
-        self.tau0 = tau_grid[np.argmin(nlls)]
-        self.reset_vars()
-        self.fit(**kwargs)
 
     def plot(self, fname = 'fit.png'):
         if self.track:
