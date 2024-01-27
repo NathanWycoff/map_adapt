@@ -7,6 +7,10 @@ exec(open("python/jax_hier_lib.py").read())
 exec(open("python/sim_settings.py").read())
 exec(open("python/sim_lib.py").read())
 
+exec(open('python/glmnet_wrapper.py').read())
+#exec(open('python/MLGL_wrapper_e11.py').read())
+#exec(open('python/ida_load.py').read())
+
 
 sigma = 1.
 
@@ -16,12 +20,12 @@ np.random.seed(123)
 if manual:
     for i in range(10):
         print("Manual")
-    #s_i = '0'
+    s_i = '0'
     #s_i = '1'
     #s_i = '2'
     #s_i = '3'
     #s_i = '4'
-    s_i = '5'
+    #s_i = '5'
     seed = 123
 else:
     print(sys.argv)
@@ -39,8 +43,10 @@ if sim == 'synthetic':
     N, Pu, Pnz, lik, sigma_err = settings[s_i]
 
     if manual:
-        N = 10000
-        Pu = 1000
+        #N = 10000
+        N = 100000
+        #Pu = 1000
+        Pu = 10000
         Pnz = 1
 
     if sparsity_type == 'random':
@@ -267,3 +273,7 @@ print(beta[beta!=0])
 #        print("Manual")
 
 
+tt = time()
+res = glmnet_fit(X, y, XX, lik, taus = tau0)
+td = time() - tt
+print(td)
