@@ -96,7 +96,7 @@ class jax_vlMAP:
         self.l2_coef = l2_coef
         self.beta0_init = beta0_init 
         self.quad = quad
-        self.N_es = N_es
+        self.N_es = min(N_es, X.shape[0]//2)
         self.es_patience = es_patience # in iterations
         self.set_Xy(X, y)
         self.do_jit = do_jit
@@ -385,7 +385,7 @@ class jax_vlMAP:
         self.tracking = {}
         if self.track:
             for v in self.vv:
-                self.tracking[v] = np.zeros((max_max_iters,)+self.vv[v].shape)
+                self.tracking[v] = np.zeros((max_iters,)+self.vv[v].shape)
 
         for i in tqdm(range(max_iters), disable = not verbose):
 
@@ -425,6 +425,7 @@ class jax_vlMAP:
             #self.sparsity[i] = np.mean(self.vv['beta']==0)
             if not np.isfinite(self.costs[i]):
                 print("Infinite cost!")
+                import IPython; IPython.embed()
                 break
 
             #sd = get_sd(grad, ss)
@@ -436,7 +437,7 @@ class jax_vlMAP:
 
             if self.tracking:
                 for v in self.vv:
-                    self.tracking[v][it] = self.vv[v]
+                    self.tracking[v][i] = self.vv[v]
 
         self.beta = self.vv['beta']
 
@@ -629,7 +630,7 @@ def jax_apply_prox_log(x0, lam0, sx, sl, c):
     ## Get value if x is nonzero
     qa = sx-1/sl
     qb = lam0/sl - jnp.abs(x0)
-    qc = c
+    qc = c # Coefficient for -log(lam).
     disc = jnp.square(qb)-4*qa*qc
     discroot = jnp.sqrt(jnp.maximum(0,disc)) # Threshold negative to zero, anticipate inferior cost will weed it out.
     lm = jnp.maximum(0,(-qb - discroot) / (2*qa))

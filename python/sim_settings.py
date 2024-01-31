@@ -24,11 +24,16 @@ for i in range(10):
 
 max_iters = 10000
 mb_size = 256
-lr = 1e-2
 
-#sparsity_type = 'random' # Totally random sparsity
-sparsity_type = 'group' #Group sparsity 
+sparsity_type = 'random' # Totally random sparsity
+#sparsity_type = 'group' #Group sparsity 
 #sparsity_type = 'hier2nd' #Overlapping group sparsity for hierarchical model.
+if sparsity_type=='random':
+    lr = 1e-2
+elif sparsity_type=='group':
+    lr = 1e-3
+else:
+    raise NotImplementedError()
 
 usejags = False
 JAGS_MAX_N = 100 # If n>this, we only do JAGS_N_REPS versions of JAGS.
@@ -73,8 +78,11 @@ settings = []
 for N in Ns:
     if N == 10000:
         Pu = 1000
-        #Pnz = 20
+        #print("5k!")
+        #Pu = 5000
+        #Pnz = 5
         Pnz = 1
+        #Pnz = 20
         for i in range(10):
             print("PNZ 1!")
     elif N == 10000:

@@ -26,7 +26,7 @@ exec(open('python/jax_nsa.py').read())
 exec(open('python/jax_hier_lib.py').read())
 exec(open('python/sim_lib.py').read())
 exec(open('python/sim_settings.py').read())
-#exec(open('python/MLGL_wrapper.py').read())
+exec(open('python/MLGL_wrapper.py').read())
 exec(open('python/glmnet_wrapper.py').read())
 #exec(open('python/ida_load.py').read())
 #exec(open('python/jags_horseshoe.py').read())
@@ -78,7 +78,13 @@ if manual:
         print("Manual")
     s_i = '0'
     seed = 0
-    models2try = ['sbl_ada']
+    #models2try = ['sbl_ada']
+    models2try = ['sbl_group']
+    max_iters = 1000
+    lr = 1e-1
+    #lr = 5e-3
+    #sparsity_type='random'
+    #lr = 1e-1
 else:
     print(sys.argv)
     s_i = sys.argv[1]
@@ -196,7 +202,14 @@ elif sim == 'libsvm':
 else:
     raise Exception("Dataset not recognized.")
 
-TAU0 = 0.1 * N
+if sparsity_type=='random':
+    TAU0 = 0.1 * N
+elif sparsity_type=='group':
+    #TAU0 = 0.025 * N
+    #TAU0 = 0.035 * N
+    TAU0 = 0.1 * N
+else:
+    raise NotImplementedError
 #TAU0 = 100.
 #TAU0 = 500.
 #TAU0 = 0.1*N/Pnz
@@ -211,7 +224,6 @@ for ind, modname in enumerate(models2try):
 
     # Our models
     if modname[:4]=='sbl_':
-        track = False
         if modname[4:] == 'ada':
             lam_prior_vars = {}
             prior = adaptive_prior
@@ -223,7 +235,7 @@ for ind, modname in enumerate(models2try):
             prior = hier_prior
         else:
             raise Exception("Modname not found.")
-        mod = jax_vlMAP(X, y, prior, lam_prior_vars, lik = lik, tau0 = TAU0, track = False, mb_size = mb_size)
+        mod = jax_vlMAP(X, y, prior, lam_prior_vars, lik = lik, tau0 = TAU0, track = manual, mb_size = mb_size, logprox=LOG_PROX)
         mod.fit(max_iters=max_iters, verbose=True, lr_pre = lr)
         #mod.fit(c_relax = 0.5, max_iters = max_iters, pc = 'identity')
 
@@ -277,7 +289,7 @@ for ind, modname in enumerate(models2try):
                     raise Exception
             else:
                 group='none'
-            beta_hat, preds = mlgl_fit_pred(X, y, XX, sigma_err, Pu, P, group = group, logistic = lik=='bernoulli')
+            beta_hat, preds = mlgl_fit_pred(X, y, XX, Pu, P, group = group, logistic = lik=='bernoulli')
         else:
             beta_hat, preds = null_pred()
     elif modname == 'ida_net':
