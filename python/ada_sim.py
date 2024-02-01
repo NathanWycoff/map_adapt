@@ -80,9 +80,10 @@ if manual:
     s_i = '1'
     #s_i = '2'
     seed = 0
-    models2try = ['sbl_group']
-    #models2try = ['sbl_ada']
-    lr = 5e-3
+    #models2try = ['sbl_group']
+    models2try = ['sbl_ada']
+    #lr = 5e-3
+    lr = 1e-3
     #lr = 1e-2
     max_iters = 20000
     #max_iters = 10
@@ -222,13 +223,8 @@ else:
     raise NotImplementedError
 
 if manual:
-    #TAU0 = 0.05*N
-    #TAU0 = 0.05*N
-    #TAU0 = 0.025*N
-    #TAU0 = 0.025*N
-    TAU0 = 0.020*N
-    #TAU0 = 0.025*N
-    #TAU0 = 0.05*N
+    #TAU0 = 0.020*N # Good for s_i=0
+    TAU0 = 0.05*N # Good for s_i=1
     for i in range(10):
         print("Manual Tau!")
 
