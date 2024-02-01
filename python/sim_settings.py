@@ -24,6 +24,7 @@ for i in range(10):
 
 max_iters = 10000
 mb_size = 256
+es_patience = 500
 
 #sparsity_type = 'random' # Totally random sparsity
 sparsity_type = 'group' #Group sparsity 
@@ -79,14 +80,19 @@ if usejags:
 settings = []
 for N in Ns:
     if N == 10000:
-        Pu = 1000
+        if sparsity_type == 'random':
+            Pu = 1000
+        elif sparsity_type == 'group':
+            Pu = 1000//5
+        else:
+            raise NotImplementedError()
         #print("5k!")
         #Pu = 5000
-        #Pnz = 5
-        Pnz = 1
+        Pnz = 5
+        #Pnz = 1
         #Pnz = 20
         for i in range(10):
-            print("PNZ 1!")
+            print("PNZ %d!"%Pnz)
     elif N == 10000:
         Pu = 20
         Pnz = 2

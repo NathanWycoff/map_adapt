@@ -22,19 +22,18 @@ from rpy2.robjects import default_converter
 test_funcs = {}
 r = robjects.r
 
-## POMP 10
 r['source']('python/R_MLGL_fun.R')
 #r['source']('python/R_exclusive_lasso.R')
 
 exec(open('python/sim_lib.py').read())
 #exec(open('python/hier_lib.py').read())
 
-def mlgl_fit_pred(X, y, XX, Pu, P, group, logistic = False):
+def mlgl_fit_pred(X, y, XX, sigma_err, Pu, P, group = 'none', logistic = False):
 
     if group=='yes':
         groups_R = groups
         var_R = np.arange(P)
-    elif group=='hier2nd':
+    elif group=='hier':
         _, ngroups, P, v1, v2 = hier2nd_sparsity(Pu,1)
         Pi = int(scipy.special.binom(Pu,2))
         var_R = np.repeat(np.nan, 5*ngroups)
@@ -63,14 +62,13 @@ def mlgl_fit_pred(X, y, XX, Pu, P, group, logistic = False):
     var_RR = robjects.IntVector(var_R)
     groups_RR = robjects.IntVector(groups_R)
 
-    mlgl_betas = r['mlgl_fitpred'](X_R, y_R, var_RR, groups_RR, logistic=logistic)
-    mlgl_betahat = mlgl_betas[:,1:]
-    mlgl_beta0 = mlgl_betas[:,0]
+    mlgl_betas = r['mlgl_fitpred'](X_R, y_R, np.square(sigma_err), var_RR, groups_RR, logistic=logistic)
+    mlgl_betahat = mlgl_betas[1:]
+    mlgl_beta0 = mlgl_betas[0]
 
-    preds = XX @ mlgl_betahat.T + mlgl_beta0[np.newaxis,:] 
-    preds = preds.T
-    #if logistic:
-    #    preds = preds > 0
+    preds = XX @ mlgl_betahat + mlgl_beta0 
+    if logistic:
+        preds = preds > 0
 
     return mlgl_betahat, preds
 
