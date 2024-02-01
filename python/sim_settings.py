@@ -25,13 +25,15 @@ for i in range(10):
 max_iters = 10000
 mb_size = 256
 
-sparsity_type = 'random' # Totally random sparsity
-#sparsity_type = 'group' #Group sparsity 
+#sparsity_type = 'random' # Totally random sparsity
+sparsity_type = 'group' #Group sparsity 
 #sparsity_type = 'hier2nd' #Overlapping group sparsity for hierarchical model.
 if sparsity_type=='random':
     lr = 1e-2
+    #lr = 1e-1
 elif sparsity_type=='group':
-    lr = 1e-3
+    #lr = 1e-3
+    lr = 1e-2
 else:
     raise NotImplementedError()
 
