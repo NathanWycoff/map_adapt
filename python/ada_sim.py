@@ -76,24 +76,22 @@ def eval_mod(betahat, preds): #TODO: libsvm
 if manual:
     for i in range(10):
         print("Manual")
+    #s_i = '0'
     s_i = '1'
     #s_i = '2'
     seed = 0
     models2try = ['sbl_group']
     #models2try = ['sbl_ada']
-    #lr = 1e-1
-    #lr = 1e-1 # Good for Cauchy.
-    #lr = 5e-3
-    lr = 1e-3
-    #lr = 1e-3
-    #max_iters = 20000
+    lr = 5e-3
+    #lr = 1e-2
     max_iters = 20000
+    #max_iters = 10
     #max_iters = 2000
     #max_iters = 2000
     #max_iters = 50000
     #max_iters = 100000
     #max_iters = 10000
-    es_patience = np.inf
+    #es_patience = np.inf
     ada = True
     #ada = False
 else:
@@ -223,13 +221,16 @@ elif sparsity_type=='group':
 else:
     raise NotImplementedError
 
-#if manual:
-#    #TAU0 = 0.05*N
-#    #TAU0 = 0.05*N
-#    #TAU0 = 0.025*N
-#    TAU0 = 0.025*N
-#    for i in range(10):
-#        print("Manual Tau!")
+if manual:
+    #TAU0 = 0.05*N
+    #TAU0 = 0.05*N
+    #TAU0 = 0.025*N
+    #TAU0 = 0.025*N
+    TAU0 = 0.020*N
+    #TAU0 = 0.025*N
+    #TAU0 = 0.05*N
+    for i in range(10):
+        print("Manual Tau!")
 
 ###############
 ###############

@@ -156,8 +156,8 @@ class jax_vlMAP:
         self._compile_costs_updates(do_jit = self.do_jit)
 
         # Adam parameters.
-        #self.beta_adam = 0.5
-        self.beta_adam = 0.999
+        self.beta_adam = 0.5
+        #self.beta_adam = 0.999
         self.eps_adam = 1e-7
 
         if self.lik in ['poisson','nb']:
@@ -236,7 +236,8 @@ class jax_vlMAP:
 
         #PP = 2*self.P if self.lik=='zinb' else self.P
         beta = jnp.zeros(self.Pb)
-        lam = jnp.ones_like(beta)
+        lam = 1.1*jnp.ones_like(beta)
+        print("new lam init")
         #lam = jnp.ones_like(beta) / (self.N+1)
 
         if self.dont_pen is not None:
@@ -388,6 +389,10 @@ class jax_vlMAP:
 
         for i in tqdm(range(max_iters), disable = not verbose):
 
+            if self.tracking:
+                for v in self.vv:
+                    self.tracking[v][i] = self.vv[v]
+
             if i % self.svrg_every==0:
                 self.vv0 = {}
                 for v in self.vv:
@@ -429,20 +434,27 @@ class jax_vlMAP:
 
             sd = get_sd_svrg(grad_nll, grad_nll0, g0, grad_prior, self.mb_size, self.N)
             if ada:
-                self.v_adam, self.vhat_adam, ss = self.adam_update_ss(self.v_adam, self.vhat_adam, sd, self.vv, i)
-                #adam_grad = {}
+                #self.v_adam, self.vhat_adam, ss_adam = self.adam_update_ss(self.v_adam, self.vhat_adam, sd, self.vv, i)
+                #ss = ss_adam
+
+                #ss = {}
                 #for v in self.vv:
-                #    adam_grad[v] = self.N/self.mb_size*grad_nll[v] + grad_prior[v]
-                #self.v_adam, self.vhat_adam, ss = self.adam_update_ss(self.v_adam, self.vhat_adam, adam_grad, self.vv, i)
+                #    if v in self.lam_prior_vars:
+                #        ss[v] = ss_adam[v]
+                #    else:
+                #        ss[v] = ss_ones[v]/N
+                #ss['lam'] = ss_ones['lam']*0.1
+                #ss['lam'] = jnp.minimum(ss_ones['lam'], ss['lam'])
+                adam_grad = {}
+                for v in self.vv:
+                    adam_grad[v] = self.N/self.mb_size*grad_nll[v] + grad_prior[v]
+                self.v_adam, self.vhat_adam, ss = self.adam_update_ss(self.v_adam, self.vhat_adam, adam_grad, self.vv, i)
             else:
                 ss = ss_ones
             next_vv = get_vv_at(self.vv, sd, ss, lr, self.tau0)
+            #import IPython; IPython.embed()
             self.vv = next_vv
             self.last_it = i
-
-            if self.tracking:
-                for v in self.vv:
-                    self.tracking[v][i] = self.vv[v]
 
         self.beta = self.vv['beta']
 
@@ -495,7 +507,7 @@ class jax_vlMAP:
         fig = plt.figure(figsize=[ncols*5,nrows*2])
 
         plt.subplot(nrows,ncols,1)
-        plt.plot(self.costs[:self.last_it])
+        plt.plot(self.costs[:(self.last_it+1)])
         plt.title('Cost')
 
         #plt.subplot(nrows,ncols,2)
