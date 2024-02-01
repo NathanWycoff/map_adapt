@@ -25,6 +25,7 @@ for i in range(10):
 max_iters = 10000
 mb_size = 256
 es_patience = 500
+ada = False
 
 #sparsity_type = 'random' # Totally random sparsity
 sparsity_type = 'group' #Group sparsity 

@@ -76,18 +76,26 @@ def eval_mod(betahat, preds): #TODO: libsvm
 if manual:
     for i in range(10):
         print("Manual")
-    s_i = '2'
+    s_i = '1'
+    #s_i = '2'
     seed = 0
     models2try = ['sbl_group']
     #models2try = ['sbl_ada']
     #lr = 1e-1
-    lr = 1e-1
-    #lr = 1e-2
+    #lr = 1e-1 # Good for Cauchy.
+    #lr = 5e-3
+    lr = 1e-3
+    #lr = 1e-3
     #max_iters = 20000
-    max_iters = 50000
+    max_iters = 20000
+    #max_iters = 2000
+    #max_iters = 2000
+    #max_iters = 50000
     #max_iters = 100000
     #max_iters = 10000
     es_patience = np.inf
+    ada = True
+    #ada = False
 else:
     print(sys.argv)
     s_i = sys.argv[1]
@@ -210,21 +218,18 @@ if sparsity_type=='random':
 elif sparsity_type=='group':
     #TAU0 = 0.025 * N
     #TAU0 = 0.035 * N
-    #TAU0 = 0.1 * N
-    TAU0 = 0.05 * N
+    TAU0 = 0.1 * N
+    #TAU0 = 0.025 * N  # good for Cauchy.
 else:
     raise NotImplementedError
-#TAU0 = 100.
-#TAU0 = 500.
-#TAU0 = 0.1*N/Pnz
 
-if manual:
-    #TAU0 = 0.05*N
-    #TAU0 = 0.05*N
-    #TAU0 = 0.025*N
-    TAU0 = 0.025*N
-    for i in range(10):
-        print("Manual Tau!")
+#if manual:
+#    #TAU0 = 0.05*N
+#    #TAU0 = 0.05*N
+#    #TAU0 = 0.025*N
+#    TAU0 = 0.025*N
+#    for i in range(10):
+#        print("Manual Tau!")
 
 ###############
 ###############
@@ -248,7 +253,7 @@ for ind, modname in enumerate(models2try):
         else:
             raise Exception("Modname not found.")
         mod = jax_vlMAP(X, y, prior, lam_prior_vars, lik = lik, tau0 = TAU0, track = manual, mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience)
-        mod.fit(max_iters=max_iters, verbose=True, lr_pre = lr)
+        mod.fit(max_iters=max_iters, verbose=True, lr_pre = lr, ada = ada)
         #mod.fit(c_relax = 0.5, max_iters = max_iters, pc = 'identity')
 
         if manual:

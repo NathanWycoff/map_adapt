@@ -42,7 +42,7 @@ def expand_X(Xs, ind1_exp, ind2_exp):
     return Xhs
 
 @jit
-def get_sd_svrg(grad_nll, grad_nll0, g0, grad_prior, ss, mb_size, N):
+def get_sd_svrg(grad_nll, grad_nll0, g0, grad_prior, mb_size, N):
     sd = {}
     for v in grad_nll:
         sd[v] = -(N/mb_size*(grad_nll[v] - grad_nll0[v]) + g0[v]  + grad_prior[v])
@@ -55,7 +55,7 @@ def get_vv_at(vv, sd, ss, lr, tau0):
     # Gradient Step
     new_vv = {}
     for v in vv:
-        new_vv[v] = vv[v] + lr*sd[v]
+        new_vv[v] = vv[v] + lr*ss[v]*sd[v]
 
     # Proximal step
     #new_beta, new_lam = jax.lax.cond(invlam, jax_apply_prox_inv, jax_apply_prox)
@@ -102,8 +102,6 @@ class jax_vlMAP:
         self.do_jit = do_jit
         self.firstfit = True
         #assert not self.quad
-
-
 
         # Stochastic gradient settings.
         if mb_size is None:
@@ -158,7 +156,8 @@ class jax_vlMAP:
         self._compile_costs_updates(do_jit = self.do_jit)
 
         # Adam parameters.
-        self.beta_adam = 0.5
+        #self.beta_adam = 0.5
+        self.beta_adam = 0.999
         self.eps_adam = 1e-7
 
         if self.lik in ['poisson','nb']:
@@ -314,9 +313,7 @@ class jax_vlMAP:
             
             return prior_smooth, npd_ns
 
-        def adam_update_ss_nojit(v_adam, vhat_adam, grad, vv, it, ssi, grad_like=False):
-            if grad_like:
-                assert False
+        def adam_update_ss_nojit(v_adam, vhat_adam, grad, vv, it):
                 #grad = gradlike
             for v in v_adam:
                 v_adam[v] = self.beta_adam*v_adam[v] + (1-self.beta_adam)*jnp.square(grad[v])
@@ -327,15 +324,6 @@ class jax_vlMAP:
             ss = {}
             for v in vv:
                 ss[v] = 1/jnp.sqrt(vhat_adam[v]+self.eps_adam)
-
-            if self.dont_pen is not None:
-                ss['lam'] = ss['lam'].at[self.dont_pen].set(0.) 
-            if self.no_adapt:
-                ss['lam'] *= 0
-
-            if self.lam_accel:
-                #ss['lam'] *= vv['lam']*jnp.exp(-vv['sigma2'])
-                ss['lam'] *= jnp.minimum(vv['lam'], jnp.abs(vv['lam']-self.N*jnp.exp(-vv['sigma2'])))*jnp.exp(-vv['sigma2'])
 
             return v_adam, vhat_adam, ss
 
@@ -368,15 +356,26 @@ class jax_vlMAP:
     def init_adam(self):
         return dict([(v,np.zeros_like(self.vv[v])) for v in self.vv]), dict([(v,np.zeros_like(self.vv[v])) for v in self.vv])
 
-    def fit(self, max_iters = 10000, lr_pre=1e-2, verbose = True, debug = np.inf, hoardlarge = False):
+    def fit(self, max_iters = 10000, lr_pre=1e-2, verbose = True, debug = np.inf, hoardlarge = False, ada = False):
         global GLOB_prox
-        lr = lr_pre / self.N
+        if ada:
+            lr = lr_pre
+        else:
+            lr = lr_pre / self.N
 
         es_num = int(np.ceil(max_iters / self.es_every))
 
-        ss = {}
+        ss_ones = {}
         for v in self.vv:
-            ss[v] = np.ones_like(self.vv[v])
+            ss_ones[v] = np.ones_like(self.vv[v])
+
+        if ada:
+            self.v_adam = {}
+            self.vhat_adam = {}
+            for v in self.vv:
+                self.v_adam[v] = np.zeros_like(self.vv[v])
+                self.vhat_adam[v] = np.zeros_like(self.vv[v])
+
 
         self.costs = np.zeros(max_iters)*np.nan
         #self.sparsity = np.zeros(max_iters)*np.nan
@@ -428,9 +427,15 @@ class jax_vlMAP:
                 import IPython; IPython.embed()
                 break
 
-            #sd = get_sd(grad, ss)
-            #sd = get_sd2(grad_nll, grad_prior, ss, self.mb_size, N)
-            sd = get_sd_svrg(grad_nll, grad_nll0, g0, grad_prior, ss, self.mb_size, self.N)
+            sd = get_sd_svrg(grad_nll, grad_nll0, g0, grad_prior, self.mb_size, self.N)
+            if ada:
+                self.v_adam, self.vhat_adam, ss = self.adam_update_ss(self.v_adam, self.vhat_adam, sd, self.vv, i)
+                #adam_grad = {}
+                #for v in self.vv:
+                #    adam_grad[v] = self.N/self.mb_size*grad_nll[v] + grad_prior[v]
+                #self.v_adam, self.vhat_adam, ss = self.adam_update_ss(self.v_adam, self.vhat_adam, adam_grad, self.vv, i)
+            else:
+                ss = ss_ones
             next_vv = get_vv_at(self.vv, sd, ss, lr, self.tau0)
             self.vv = next_vv
             self.last_it = i
@@ -516,7 +521,7 @@ class jax_vlMAP:
         if self.track:
             for vi,v in enumerate(self.tracking):
                 plt.subplot(nrows,ncols,1+3+vi)
-                plt.plot(self.tracking[v][:self.last_it])
+                plt.plot(self.tracking[v][:(self.last_it+1)])
                 if v=='beta':
                     sparsity = np.mean(self.tracking[v][:self.last_it]==0,axis=1)
                     ax = plt.gca().twinx()
