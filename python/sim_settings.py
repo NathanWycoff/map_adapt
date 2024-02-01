@@ -102,7 +102,8 @@ for N in Ns:
         raise Exception("N bad.")
     #settings += [(N,Pu,Pnz,'normal', 1e0),(N,Pu,Pnz,'normal', 1e-1),(N,Pu,Pnz,'normal', 1e-2),]+\
     #        [(N,Pu,Pnz,'poisson', 1e0),(N,Pu,Pnz,'cauchy', 1e0),(N,Pu,Pnz,'bernoulli', 1e0)]
-    settings += [(N,Pu,Pnz,'normal', 1e0),(N,Pu,Pnz,'poisson', 1e0),(N,Pu,Pnz,'cauchy', 1e0),(N,Pu,Pnz,'bernoulli', 1e0)]
+    #settings += [(N,Pu,Pnz,'normal', 1e0),(N,Pu,Pnz,'poisson', 1e0),(N,Pu,Pnz,'cauchy', 1e0),(N,Pu,Pnz,'bernoulli', 1e0)]
+    settings += [(N,Pu,Pnz,'normal', 1e0),(N,Pu,Pnz,'nb', 1e0),(N,Pu,Pnz,'cauchy', 1e0),(N,Pu,Pnz,'bernoulli', 1e0)]
 
 reg_problems = ['abalone','housing','bodyfat','mpg','triazines','mg','hcr_all','hcr_eu']
 class_problems = ['diabetes','australian','heart','covtype']

@@ -79,7 +79,9 @@ if manual:
     #s_i = '0'
     s_i = '1'
     #s_i = '2'
-    seed = 0
+    #s_i = '3'
+    #seed = 0
+    seed = 1
     #models2try = ['sbl_group']
     models2try = ['sbl_ada']
     #lr = 5e-3
@@ -223,8 +225,8 @@ else:
     raise NotImplementedError
 
 if manual:
-    #TAU0 = 0.020*N # Good for s_i=0
-    TAU0 = 0.05*N # Good for s_i=1
+    TAU0 = 0.020*N # Good for s_i=0,2
+    #TAU0 = 0.05*N # Good for s_i=1
     for i in range(10):
         print("Manual Tau!")
 
