@@ -88,9 +88,10 @@ for N in Ns:
             raise NotImplementedError()
         #print("5k!")
         #Pu = 5000
-        Pnz = 5
+        #Pnz = 5
         #Pnz = 1
         #Pnz = 20
+        Pnz = 10
         for i in range(10):
             print("PNZ %d!"%Pnz)
     elif N == 10000:

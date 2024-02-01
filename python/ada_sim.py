@@ -78,11 +78,13 @@ if manual:
         print("Manual")
     s_i = '2'
     seed = 0
-    #models2try = ['sbl_group']
-    models2try = ['sbl_ada']
+    models2try = ['sbl_group']
+    #models2try = ['sbl_ada']
+    #lr = 1e-1
     lr = 1e-1
     #lr = 1e-2
-    max_iters = 10000
+    #max_iters = 20000
+    max_iters = 50000
     #max_iters = 100000
     #max_iters = 10000
     es_patience = np.inf
@@ -219,6 +221,7 @@ else:
 if manual:
     #TAU0 = 0.05*N
     #TAU0 = 0.05*N
+    #TAU0 = 0.025*N
     TAU0 = 0.025*N
     for i in range(10):
         print("Manual Tau!")
