@@ -36,8 +36,8 @@ def null_pred():
     preds = np.repeat(np.nan, NN)
     return beta_hat, preds
 
-manual = True
-#manual = False
+#manual = True
+manual = False
 
 verbose = True
 LOG_PROX = True
@@ -76,27 +76,8 @@ def eval_mod(betahat, preds): #TODO: libsvm
 if manual:
     for i in range(10):
         print("Manual")
-    #s_i = '0'
-    s_i = '1'
-    #s_i = '2'
-    #s_i = '3'
-    #seed = 0
+    s_i = '0'
     seed = 1
-    #models2try = ['sbl_group']
-    models2try = ['sbl_ada']
-    #lr = 5e-3
-    lr = 1e-3
-    #lr = 1e-2
-    max_iters = 20000
-    #max_iters = 10
-    #max_iters = 2000
-    #max_iters = 2000
-    #max_iters = 50000
-    #max_iters = 100000
-    #max_iters = 10000
-    #es_patience = np.inf
-    ada = True
-    #ada = False
 else:
     print(sys.argv)
     s_i = sys.argv[1]
@@ -217,18 +198,15 @@ else:
 if sparsity_type=='random':
     TAU0 = 0.1 * N
 elif sparsity_type=='group':
-    #TAU0 = 0.025 * N
-    #TAU0 = 0.035 * N
-    TAU0 = 0.1 * N
-    #TAU0 = 0.025 * N  # good for Cauchy.
+    #TAU0 = 0.020*N # Good for s_i=0,2
+    print("new tau:")
+    TAU0 = 0.015*N # Good for s_i=0,2
 else:
     raise NotImplementedError
 
-if manual:
-    TAU0 = 0.020*N # Good for s_i=0,2
-    #TAU0 = 0.05*N # Good for s_i=1
-    for i in range(10):
-        print("Manual Tau!")
+#if manual:
+#    for i in range(10):
+#        print("Manual Tau!")
 
 ###############
 ###############

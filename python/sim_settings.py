@@ -22,10 +22,10 @@ for i in range(10):
     print(beta_style)
 #beta_style = 'fixed'
 
-max_iters = 10000
+max_iters = 20000
 mb_size = 256
 es_patience = 500
-ada = False
+ada = True
 
 #sparsity_type = 'random' # Totally random sparsity
 sparsity_type = 'group' #Group sparsity 
@@ -34,8 +34,8 @@ if sparsity_type=='random':
     lr = 1e-2
     #lr = 1e-1
 elif sparsity_type=='group':
-    #lr = 1e-3
-    lr = 1e-2
+    lr = 1e-3
+    #lr = 1e-2
 else:
     raise NotImplementedError()
 

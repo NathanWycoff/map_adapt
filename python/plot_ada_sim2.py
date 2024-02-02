@@ -20,9 +20,9 @@ res = pd.concat(dfs)
 methods = [x for x in model_colors.keys() if x in models2try]
 ncomp = len(methods)
 
-if sparsity_type in ['group','hier2nd']:
-    if 'sbl_ada' in methods:
-        methods.remove('sbl_ada')
+#if sparsity_type in ['group','hier2nd']:
+#    if 'sbl_ada' in methods:
+#        methods.remove('sbl_ada')
 
 isjags = res['Method']=='jags'
 isnan = res['yy-MSE']==1.0
