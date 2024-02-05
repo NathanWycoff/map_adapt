@@ -101,8 +101,9 @@ for N in Ns:
     settings += [(N,Pu,Pnz,'normal', 1e0),(N,Pu,Pnz,'nb', 1e0),(N,Pu,Pnz,'cauchy', 1e0),(N,Pu,Pnz,'bernoulli', 1e0)]
 
 reg_problems = ['abalone','housing','bodyfat','mpg','triazines','mg','hcr_all','hcr_eu']
-class_problems = ['diabetes','australian','heart','covtype']
-datasets_to_use = reg_problems + class_problems
+class_problems = ['diabetes','australian','heart','covtype','mushrooms','phishing']
+#datasets_to_use = reg_problems + class_problems
+datasets_to_use = ['abalone','housing','bodyfat','mpg','mg','diabetes','heart','covtype','mushrooms','phishing']
 liks = {
     'abalone' : 'poisson',
 }

@@ -1,6 +1,8 @@
 .venv/
 sim_out/*
 debug_out/*
+data/*
+libsvm_data/*
 
 sim_args.txt
 
