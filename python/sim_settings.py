@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 #  sim_settings.py Author "Nathan Wycoff <nathanbrwycoff@gmail.com>" Date 01.19.2023
 
+import numpy as np
+
 ## Params
 NN = 1000 #TODO: overwritten if libsvm.
 
@@ -26,14 +28,14 @@ es_patience = 500
 ada = True
 
 #sparsity_type = 'random' # Totally random sparsity
-sparsity_type = 'group' #Group sparsity 
-#sparsity_type = 'hier2nd' #Overlapping group sparsity for hierarchical model.
+#sparsity_type = 'group' #Group sparsity 
+sparsity_type = 'hier2nd' #Overlapping group sparsity for hierarchical model.
 if sparsity_type=='random':
     lr = 1e-2
-    #lr = 1e-1
 elif sparsity_type=='group':
     lr = 1e-3
-    #lr = 1e-2
+elif sparsity_type=='hier2nd':
+    lr = 1e-3
 else:
     raise NotImplementedError()
 
@@ -49,7 +51,7 @@ if sparsity_type=='random':
 elif sparsity_type=='group':
     models2try = ['sbl_ada','sbl_group','glmnet','MLGL','OLS']
 elif sparsity_type=='hier2nd':
-    models2try = ['sbl_hier','glmnet','MLGL','OLS']
+    models2try = ['sbl_ada','sbl_hier','glmnet','MLGL','OLS']
 else:
     raise Exception
 
@@ -83,13 +85,10 @@ for N in Ns:
             Pu = 1000
         elif sparsity_type == 'group':
             Pu = 1000//5
+        elif sparsity_type == 'hier2nd':
+            Pu = int(np.sqrt(2*1000))
         else:
             raise NotImplementedError()
-        #print("5k!")
-        #Pu = 5000
-        #Pnz = 5
-        #Pnz = 1
-        #Pnz = 20
         Pnz = 10
     elif N == 10000:
         Pu = 20

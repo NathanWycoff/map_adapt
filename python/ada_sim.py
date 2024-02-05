@@ -76,16 +76,15 @@ def eval_mod(betahat, preds): #TODO: libsvm
 if manual:
     for i in range(10):
         print("Manual")
-    s_i = '3'
-    seed = 25
-    models2try = ['sbl_group','glmnet']
+    s_i = '0'
+    seed = 0
+    models2try = ['sbl_hier','glmnet']
 else:
     print(sys.argv)
     s_i = sys.argv[1]
     seed = int(sys.argv[2])
 
 s_i_seed = sum([ord(a) for a in s_i])
-
 
 key = jax.random.PRNGKey(seed+s_i_seed)
 np.random.seed(seed+s_i_seed)
@@ -199,6 +198,10 @@ else:
 if sparsity_type=='random':
     TAU0 = 0.1 * N
 elif sparsity_type=='group':
+    #TAU0 = 0.020*N # Good for s_i=0,2
+    print("new tau:")
+    TAU0 = 0.015*N # Good for s_i=0,2
+elif sparsity_type=='hier2nd':
     #TAU0 = 0.020*N # Good for s_i=0,2
     print("new tau:")
     TAU0 = 0.015*N # Good for s_i=0,2
