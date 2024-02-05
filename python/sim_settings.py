@@ -16,10 +16,8 @@ Ns = [10000]
 
 sim = 'synthetic'
 #sim = 'libsvm'
-#beta_style = 'random'
-beta_style = 'floor'
-for i in range(10):
-    print(beta_style)
+beta_style = 'random'
+#beta_style = 'floor'
 #beta_style = 'fixed'
 
 max_iters = 20000
@@ -93,8 +91,6 @@ for N in Ns:
         #Pnz = 1
         #Pnz = 20
         Pnz = 10
-        for i in range(10):
-            print("PNZ %d!"%Pnz)
     elif N == 10000:
         Pu = 20
         Pnz = 2

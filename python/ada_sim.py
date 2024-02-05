@@ -49,9 +49,9 @@ nrec = 3
 nqoi = len(qoi)
 ncomps = len(models2try)
 #res = pd.DataFrame(np.zeros([ncomps*iters*nset,nqoi+nrec+1+1+1])) # The 1 is the competitor and 1 is the setting, and 1 is the execution time.
-res = pd.DataFrame(np.zeros([ncomps,nqoi+nrec+1+1+1])) # The 1 is the competitor and 1 is the setting, and 1 is the execution time.
+res = pd.DataFrame(np.zeros([ncomps,nqoi+nrec+1+1+1+1])) # The 1 is the competitor and 1 is the setting, and 1 is the seed, and 1 is the execution time.
 # TODO: Add iters, execution time.
-res.columns = ['Method','Setting','Time']+['N','P','rho_P']+qoi
+res.columns = ['Method','Setting','Seed','Time']+['N','P','rho_P']+qoi
 
 def eval_mod(betahat, preds): #TODO: libsvm
     if lik in ['normal','poisson','nb']:
@@ -76,8 +76,9 @@ def eval_mod(betahat, preds): #TODO: libsvm
 if manual:
     for i in range(10):
         print("Manual")
-    s_i = '0'
-    seed = 1
+    s_i = '3'
+    seed = 25
+    models2try = ['sbl_group','glmnet']
 else:
     print(sys.argv)
     s_i = sys.argv[1]
@@ -206,7 +207,11 @@ else:
 
 #if manual:
 #    for i in range(10):
-#        print("Manual Tau!")
+#        print("Custom tau0!")
+#    #TAU0 = 0.020*N # Good for s_i=0,2
+#    #TAU0 = 0.010*N # Good for s_i=0,2
+#    #TAU0 = 1e-5*N
+#    #es_patience = 2000
 
 ###############
 ###############
@@ -229,8 +234,13 @@ for ind, modname in enumerate(models2try):
             prior = hier_prior
         else:
             raise Exception("Modname not found.")
-        mod = jax_vlMAP(X, y, prior, lam_prior_vars, lik = lik, tau0 = TAU0, track = manual, mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience)
-        mod.fit(max_iters=max_iters, verbose=True, lr_pre = lr, ada = ada)
+        nzparams = 0
+        nz_counter = 0
+        while nzparams == 0:
+            mod = jax_vlMAP(X, y, prior, lam_prior_vars, lik = lik, tau0 = TAU0*np.power(0.9,nz_counter), track = manual, mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience)
+            mod.fit(max_iters=max_iters, verbose=True, lr_pre = lr, ada = ada)
+            nzparams = np.sum(mod.beta!=0)
+            nz_counter += 1
         #mod.fit(c_relax = 0.5, max_iters = max_iters, pc = 'identity')
 
         if manual:
@@ -330,10 +340,11 @@ for ind, modname in enumerate(models2try):
     td = time()-tt
     res.iloc[ind,0] = modname
     res.iloc[ind,1] = s_i
-    res.iloc[ind,2] = td
-    res.iloc[ind,3] = N
-    res.iloc[ind,4] = P
-    res.iloc[ind,(3+nrec):(nqoi+nrec+3)] = eval_mod(beta_hat, preds)
+    res.iloc[ind,2] = seed
+    res.iloc[ind,3] = td
+    res.iloc[ind,4] = N
+    res.iloc[ind,5] = P
+    res.iloc[ind,(4+nrec):(nqoi+nrec+4)] = eval_mod(beta_hat, preds)
 
 if manual:
     for i in range(10):

@@ -29,6 +29,9 @@ isnan = res['yy-MSE']==1.0
 res.loc[np.logical_and(isjags, isnan),'yy-MSE'] = np.nan
 res.loc[np.logical_and(isjags, isnan),'Time'] = np.nan
 
+keep = np.logical_and(res['Method']=='sbl_group', res['Setting']==3.0)
+res.loc[keep,:]
+
 cols = [model_colors[x] for x in methods]
 
 #fig = plt.figure(figsize=[16,12]) # For my own inspection
