@@ -7,8 +7,8 @@ import numpy as np
 ## Params
 NN = 1000 #TODO: overwritten if libsvm.
 
-#iters = 30
-iters = 2
+iters = 30
+#iters = 2
 Ns = [10000]
 
 #Pu = 200
@@ -104,7 +104,8 @@ reg_problems = ['abalone','housing','bodyfat','mpg','triazines','mg','hcr_all','
 class_problems = ['diabetes','australian','heart','covtype','mushrooms','phishing']
 #datasets_to_use = reg_problems + class_problems
 #datasets_to_use = ['abalone','housing','bodyfat','mpg','mg','diabetes','heart','covtype','mushrooms','phishing']
-datasets_to_use = ['housing','bodyfat','mpg','mg','diabetes','australian','heart','covtype','mushrooms','phishing']
+#datasets_to_use = ['housing','bodyfat','mpg','mg','diabetes','australian','heart','covtype','mushrooms','phishing']
+datasets_to_use = ['housing','bodyfat','mpg','mg','diabetes','australian','heart','covtype','phishing']
 liks = {
     'abalone' : 'poisson',
 }

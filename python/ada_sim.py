@@ -60,7 +60,7 @@ def eval_mod(betahat, preds): #TODO: libsvm
         if np.any(np.isnan(preds)):
             yymse = np.nan
         else:
-            yymse = np.mean(yy!=preds) # TODO: Predictive log loglikelihood
+            yymse = np.mean(yy!=preds) # TODO: Predictive log loglikelihood?
     elif lik == 'cauchy':
         yymse = np.median(np.abs(yy-preds))
     
@@ -77,12 +77,13 @@ if manual:
     if len(sys.argv)>1:
         for i in range(10):
             print("Passed arguments but manual mode is on!")
-            quit()
+        quit()
     for i in range(10):
         print("Manual")
     #s_i = '0'
     #s_i = 'abalone'
-    s_i = 'housing'
+    #s_i = 'heart'
+    s_i = 'diabetes'
     seed = 0
     #models2try = ['sbl_hier','glmnet']
 else:
@@ -276,6 +277,8 @@ for ind, modname in enumerate(models2try):
         if lik in ['normal','bernoulli','poisson','nb']:
             likglm = 'poisson' if lik=='nb' else lik
             beta_hat, preds = glmnet_fit(X, y, XX, lik = likglm)
+            if lik=='bernoulli':
+                preds = preds > 0
         else:
             beta_hat, preds = null_pred()
         
@@ -319,12 +322,9 @@ for ind, modname in enumerate(models2try):
     elif modname=='OLS':
         if P<N:
             try:
-                issm = True
                 if lik == 'normal':
                     fit = sm.OLS(y, sm.add_constant(X)).fit()
                 elif lik == 'bernoulli':
-                    #fit = LogisticRegression().fit(X, y)
-                    #issm = False
                     fit = sm.GLM(y, sm.add_constant(X), family = sm.families.Binomial()).fit()
                 elif lik == 'poisson':
                     fit = sm.GLM(y, sm.add_constant(X), family = sm.families.Poisson()).fit()
@@ -333,13 +333,10 @@ for ind, modname in enumerate(models2try):
                 elif lik == 'cauchy':
                     fit = sm.RLM(y, sm.add_constant(X), M=sm.robust.norms.HuberT()).fit()
 
-                if issm:
-                    preds = fit.predict(sm.add_constant(XX))
-                    beta_hat = fit.params[1:]
-                else:
-                    preds = fit.predict_proba(XX)[:,1]
-                    preds = preds>=0.5
-                    beta_hat = fit.coef_.flatten()
+                preds = fit.predict(sm.add_constant(XX))
+                beta_hat = fit.params[1:]
+                if lik=='bernoulli':
+                    preds = preds >= 0.5
             except Exception:
                 beta_hat, preds = null_pred()
         else:
