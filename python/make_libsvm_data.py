@@ -12,13 +12,20 @@ import numpy as np
 
 exec(open('python/sim_settings.py').read())
 
-libsvm_dir = "./libsvm_data/"
-data_dir = "./data/"
 Path(libsvm_dir).mkdir(parents=True, exist_ok=True)
 Path(data_dir).mkdir(parents=True, exist_ok=True)
 
 urls = {}
 #urls['gisette'] = ['https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/gisette_scale.bz2', 'https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/gisette_scale.t.bz2']
+urls['abalone'] = ['https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/regression/abalone']
+urls['housing'] = ['https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/regression/housing']
+urls['bodyfat'] = ['https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/regression/bodyfat']
+urls['mpg'] = ['https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/regression/mpg']
+urls['mg'] = ['https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/regression/mg']
+urls['australian'] = ['https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/australian']
+urls['diabetes'] = ['https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/diabetes']
+urls['heart'] = ['https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/heart']
+urls['covtype'] = ['https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/covtype.libsvm.binary.bz2']
 urls['mushrooms'] = ['https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/mushrooms']
 urls['phishing'] = ['https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/phishing']
 
@@ -28,7 +35,7 @@ for ds in datasets:
     dfs = []
     for ui,url in enumerate(urls[ds]):
         # Download bz2 file
-        if url[:-4]=='.bz2':
+        if url[-4:]=='.bz2':
             fname = libsvm_dir+ds+'_'+str(ui)+'.bz2'
         else:
             fname = libsvm_dir+ds+'_'+str(ui)
@@ -56,17 +63,5 @@ for ds in datasets:
     # Write to disk.
 
     outname = data_dir+ds+'.csv'
-    df.to_csv(outname)
+    df.to_csv(outname, index = False)
 
-
-#    for fname in fnames:
-#        #dat = svm_read_problem(fname)
-#        #df = pd.DataFrame(dat[1])
-#
-#        ## Decompress it
-#        #fname_dc = fname[:-4] + '.dat'
-#        #zipfile = bz2.BZ2File(fname) # open the file
-#        #data = zipfile.read() # get the decompressed data
-#        #with open(fname_dc, 'wb') as f:
-#        #    f.write(data)
-#        #fnames.append(fname_dc)

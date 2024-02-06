@@ -74,11 +74,17 @@ def eval_mod(betahat, preds): #TODO: libsvm
         return yymse, nz
 
 if manual:
+    if len(sys.argv)>1:
+        for i in range(10):
+            print("Passed arguments but manual mode is on!")
+            quit()
     for i in range(10):
         print("Manual")
-    s_i = '0'
+    #s_i = '0'
+    #s_i = 'abalone'
+    s_i = 'housing'
     seed = 0
-    models2try = ['sbl_hier','glmnet']
+    #models2try = ['sbl_hier','glmnet']
 else:
     print(sys.argv)
     s_i = sys.argv[1]
@@ -159,8 +165,11 @@ if sim == 'synthetic':
     y = y_all[:N]
     yy = y_all[N:(N+NN)]
 elif sim == 'libsvm':
-    with open("pickles/"+s_i+".pkl",'rb') as f:
-        X_all, y_all = pickle.load(f)
+    #with open("pickles/"+s_i+".pkl",'rb') as f:
+    #    X_all, y_all = pickle.load(f)
+    df = pd.read_csv(data_dir+s_i+'.csv')
+    X_all = np.array(df.iloc[:,:-1])
+    y_all = np.array(df['y'])
 
     N,Pu = X_all.shape
 
@@ -184,8 +193,9 @@ elif sim == 'libsvm':
 
     test_set = np.sort(np.random.choice(N, N//2, replace = False))
     train_set = np.array(list(set(np.arange(N)).difference(test_set)))
-    XX = X_all[test_set,:]
-    XXu = XXu_all[test_set,:]
+    if sparsity_type=='hier2nd':
+        XX = X_all[test_set,:]
+        XXu = Xu_all[test_set,:]
     yy = y_all[test_set]
     X = X_all[train_set,:]
     Xu = Xu_all[train_set,:]

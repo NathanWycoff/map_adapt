@@ -7,8 +7,8 @@ import numpy as np
 ## Params
 NN = 1000 #TODO: overwritten if libsvm.
 
-iters = 30
-#iters = 2
+#iters = 30
+iters = 2
 Ns = [10000]
 
 #Pu = 200
@@ -16,8 +16,8 @@ Ns = [10000]
 
 # setting 5-9 did not finish.
 
-sim = 'synthetic'
-#sim = 'libsvm'
+#sim = 'synthetic'
+sim = 'libsvm'
 beta_style = 'random'
 #beta_style = 'floor'
 #beta_style = 'fixed'
@@ -103,7 +103,8 @@ for N in Ns:
 reg_problems = ['abalone','housing','bodyfat','mpg','triazines','mg','hcr_all','hcr_eu']
 class_problems = ['diabetes','australian','heart','covtype','mushrooms','phishing']
 #datasets_to_use = reg_problems + class_problems
-datasets_to_use = ['abalone','housing','bodyfat','mpg','mg','diabetes','heart','covtype','mushrooms','phishing']
+#datasets_to_use = ['abalone','housing','bodyfat','mpg','mg','diabetes','heart','covtype','mushrooms','phishing']
+datasets_to_use = ['housing','bodyfat','mpg','mg','diabetes','australian','heart','covtype','mushrooms','phishing']
 liks = {
     'abalone' : 'poisson',
 }
@@ -119,4 +120,6 @@ elif sim == 'libsvm':
 else:
     raise Exception("sim unrecognized.")
 
+libsvm_dir = "./libsvm_data/"
+data_dir = "./data/"
 simout_dir = sim+"_"+sparsity_type

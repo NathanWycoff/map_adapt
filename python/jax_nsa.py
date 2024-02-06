@@ -111,6 +111,9 @@ class jax_vlMAP:
                 self.mb_size = self.N
         else:
             self.mb_size = mb_size
+        if self.mb_size >= self.N:
+            self.mb_size = self.N
+
         if self.quad:
             self.mb_size = jax_vlMAP.auto_N_sg
             self.ind1_exp = jnp.repeat(jnp.arange(self.Pu-1), 1+jnp.flip(jnp.arange(self.Pu-1)))
