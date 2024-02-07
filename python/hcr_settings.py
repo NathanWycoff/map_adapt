@@ -2,7 +2,6 @@ import numpy as np
 
 #iters = 200
 iters = 10000
-lr = 5e-3
 #lr = 0.1
 #lr = 1e-2
 adam = True

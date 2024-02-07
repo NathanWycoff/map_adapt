@@ -95,12 +95,18 @@ class jax_vlMAP:
         self.lam_accel = lam_accel
         self.l2_coef = l2_coef
         self.beta0_init = beta0_init 
+        self.do_jit = do_jit
+
         self.quad = quad
+        if self.quad:
+            Pu = X.shape[1]
+            self.ind1_exp = jnp.repeat(jnp.arange(Pu-1), 1+jnp.flip(jnp.arange(Pu-1)))
+            self.ind2_exp = jnp.concatenate([jnp.arange(p+1, Pu) for p in range(Pu)])
+
         self.N_es = min(N_es, X.shape[0]//2)
         self.es_patience = es_patience # in iterations
         self.set_Xy(X, y)
-        self.do_jit = do_jit
-        self.firstfit = True
+
         #assert not self.quad
 
         # Stochastic gradient settings.
@@ -114,10 +120,6 @@ class jax_vlMAP:
         if self.mb_size >= self.N:
             self.mb_size = self.N
 
-        if self.quad:
-            self.mb_size = jax_vlMAP.auto_N_sg
-            self.ind1_exp = jnp.repeat(jnp.arange(self.Pu-1), 1+jnp.flip(jnp.arange(self.Pu-1)))
-            self.ind2_exp = jnp.concatenate([jnp.arange(p+1, self.Pu) for p in range(self.Pu)])
 
         self.is_stochastic = self.mb_size < self.N
 
@@ -180,6 +182,8 @@ class jax_vlMAP:
         ind_es = np.random.choice(N,self.N_es,replace=False)
         ind_train = np.setdiff1d(np.arange(N), ind_es)
         X_es = X[ind_es,:]
+        if self.quad:
+            X_es = expand_X(X_es, self.ind1_exp, self.ind2_exp)  # Create interaction terms just in time.
         y_es = y[ind_es]
         X_train = X[ind_train,:]
         y_train = y[ind_train]
@@ -334,15 +338,15 @@ class jax_vlMAP:
         eval_nll_grad_subset = jax.value_and_grad(eval_nll_subset)
         eval_prior_grad = jax.value_and_grad(eval_prior, has_aux = True)
 
-        def grad_samp(vv, tau0, X_use, ys):# Just used in one place below \shrug
-            cost_nll, grad_nll = eval_nll_grad_subset(vv, X_use, ys)
+        def grad_samp(vv, tau0, Xs_use, ys):# Just used in one place below \shrug
+            cost_nll, grad_nll = eval_nll_grad_subset(vv, Xs_use, ys)
             cost_npd, grad_npd = eval_prior_grad(vv, tau0)
             #cur_cost = cost_nll / len(samp) + sum(cost_npd) / self.N
-            cur_cost = (self.N / X_use.shape[0]) * cost_nll  + sum(cost_npd)
+            cur_cost = (self.N / Xs_use.shape[0]) * cost_nll  + sum(cost_npd)
             
             grad = {}
             for v in vv:
-                grad[v] = (self.N / X_use.shape[0])* grad_nll[v] + grad_npd[v]
+                grad[v] = (self.N / Xs_use.shape[0])* grad_nll[v] + grad_npd[v]
             return cur_cost, grad, grad_nll, grad_npd
 
         if do_jit:
@@ -390,7 +394,7 @@ class jax_vlMAP:
             for v in self.vv:
                 self.tracking[v] = np.zeros((max_iters,)+self.vv[v].shape)
 
-        for i in tqdm(range(max_iters), disable = not verbose):
+        for i in tqdm(range(max_iters), disable = not verbose, smoothing = 0.):
 
             if self.tracking:
                 for v in self.vv:
@@ -424,8 +428,14 @@ class jax_vlMAP:
             ind = np.random.choice(self.N,self.mb_size,replace=False)
 
             # TODO: Expand quadratic boy here.
-            cost_nll, grad_nll = self.eval_nll_grad_subset(self.vv, self.X[ind,:], self.y[ind])
-            _, grad_nll0 = self.eval_nll_grad_subset(self.vv0, self.X[ind,:], self.y[ind])
+            Xs = self.X[ind,:]
+            ys = self.y[ind]
+            if self.quad:
+                Xs_use = expand_X(Xs, self.ind1_exp, self.ind2_exp)  # Create interaction terms just in time.
+            else:
+                Xs_use = Xs
+            cost_nll, grad_nll = self.eval_nll_grad_subset(self.vv, Xs_use, ys)
+            _, grad_nll0 = self.eval_nll_grad_subset(self.vv0, Xs_use, ys)
             cost_prior, grad_prior = self.eval_prior_grad(self.vv, self.tau0)
 
             self.costs[i] = self.N/self.mb_size*cost_nll + sum(cost_prior)

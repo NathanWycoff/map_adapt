@@ -4,6 +4,7 @@
 
 # List:
 # big boi = True (and synth_int=True)
+# global
 # real data
 # zinb
 
@@ -45,10 +46,9 @@ lik = 'normal'
 use_tr = False
 #use_tr = True
 use_nest = False
-big_boi = False #Use quadratic model? 
-synthetic_interact = False
+big_boi = True #Use quadratic model? 
+synthetic_interact = big_boi
 
-sgd = True
 synthetic = True
 momentum = False
 #momentum = True
@@ -58,6 +58,11 @@ if LOG_PROX:
     GLOB_prox = 'log'
 else:
     GLOB_prox = 'std'
+
+if big_boi:
+    lr = 1e-5
+else:
+    lr = 5e-3
 
 random_effects = True
 #eu_only = False
@@ -266,8 +271,6 @@ mnll_big = np.zeros(reps)
 inds_train = np.random.choice(X.shape[0], n_train)
 inds_test = np.delete(np.arange(X.shape[0]), inds_train)
 X_train = X[inds_train, :]
-if not sgd:
-    X_big_train = np.array(X_big)[inds_train,:]
 y_train = y[inds_train]
 X_test = X[inds_test, :]
 y_test = y[inds_test]
@@ -282,7 +285,7 @@ else:
     lam_prior_vars = {}
     #mod = jax_vlMAP(X_train, y_train, adaptive_prior, lam_prior_vars, lik=lik, tau0=tau0, track=False, l2_coef=l2_coef, logprox=LOG_PROX, quad = True)
     prior = adaptive_prior
-mod = jax_vlMAP(X_train, y_train, prior, lam_prior_vars, lik = lik, tau0 = tau0, track = manual, mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience)
+mod = jax_vlMAP(X_train, y_train, prior, lam_prior_vars, lik = lik, tau0 = tau0, track = (manual and not big_boi), mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience, quad = big_boi)
 mod.fit(max_iters=max_iters, verbose=True, lr_pre = lr, ada = ada, warm_up = True)
 
 mod.plot()
