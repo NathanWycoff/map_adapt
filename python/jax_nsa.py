@@ -400,6 +400,13 @@ class jax_vlMAP:
                 for v in self.vv:
                     self.tracking[v][i] = self.vv[v]
 
+            if i % self.es_every==0:
+                self.nll_es[i//self.es_every] = -np.sum(self.predictive(self.X_es).log_prob(self.y_es))
+                best_it = np.nanargmin(self.nll_es) * self.es_every
+                if i-best_it > self.es_patience:
+                    print("ES stop!")
+                    break
+
             if i % self.svrg_every==0:
                 self.vv0 = {}
                 for v in self.vv:
@@ -417,13 +424,6 @@ class jax_vlMAP:
                     _, grad_vr = self.eval_nll_grad_subset(self.vv0, X_use_vr, ys_vr)
                     for v in self.vv:
                         g0[v] += grad_vr[v]
-
-            if i % self.es_every==0:
-                self.nll_es[i//self.es_every] = -np.sum(self.predictive(self.X_es).log_prob(self.y_es))
-                best_it = np.nanargmin(self.nll_es) * self.es_every
-                if i-best_it > self.es_patience:
-                    print("ES stop!")
-                    break
 
             ind = np.random.choice(self.N,self.mb_size,replace=False)
 

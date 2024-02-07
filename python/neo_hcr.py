@@ -24,17 +24,6 @@ print(sys.argv)
 
 manual = True
 
-#seed = int(sys.argv[1])
-if manual:
-    if len(sys.argv)>1:
-        for i in range(10):
-            print("Manual settings but arguments provided!")
-        quit()
-
-    for i in range(10):
-        print("Manual settings!")
-    seed = 5
-
 # seed = int(time()*100) % 10000
 # seed = 1900
 # np.random.seed(seed)
@@ -59,15 +48,21 @@ if LOG_PROX:
 else:
     GLOB_prox = 'std'
 
-if big_boi:
-    #lr = 1e-5
-    lr = 1e-4
-else:
-    lr = 5e-3
-
 random_effects = True
-#eu_only = False
-eu_only = True
+eu_only = False
+#eu_only = True
+
+if eu_only:
+    if big_boi:
+        #lr = 1e-5
+        lr = 1e-4
+    else:
+        lr = 5e-3
+else:
+    if big_boi:
+        lr = 1e-5
+    else:
+        raise NotImplementedError()
 
 exec(open('python/jax_nsa.py').read())
 exec(open('python/jax_hier_lib.py').read())
@@ -75,6 +70,20 @@ exec(open('python/sim_lib.py').read())
 exec(open('python/hcr_settings.py').read())
 exec(open('python/glmnet_wrapper.py').read())
 key = jax.random.PRNGKey(seed)
+
+#seed = int(sys.argv[1])
+if manual:
+    if len(sys.argv)>1:
+        for i in range(10):
+            print("Manual settings but arguments provided!")
+        quit()
+
+    for i in range(10):
+        print("Manual settings!")
+    seed = 5
+    #max_iters = 1500
+    es_patience = np.inf
+
 
 df = pd.read_csv('./data/hcr_impu1.csv').iloc[:, 1:]
 
@@ -297,4 +306,6 @@ zero_func = np.where(mod.vv['beta'][Xempty_big.shape[1]:]!=0)[0]
 print(av_names_big[zero_func])
 
 dfa = pd.DataFrame([mod.vv['beta'][mean_func], av_names_big[mean_func]]).T
-dfa.sort_values(0)
+print(dfa.sort_values(0))
+
+mod.nll_es
