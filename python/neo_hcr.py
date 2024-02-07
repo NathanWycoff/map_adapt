@@ -60,7 +60,8 @@ else:
     GLOB_prox = 'std'
 
 if big_boi:
-    lr = 1e-5
+    #lr = 1e-5
+    lr = 1e-4
 else:
     lr = 5e-3
 
@@ -150,10 +151,8 @@ verbose = False
 use_hier = big_boi
 
 #tau0 = np.logspace(5, 6, reps)[seed]
-#tau0 = 1e4
-#tau0 = 1e0
-#tau0 = 1e2
-tau0 = 1e3
+#tau0 = 1e3
+tau0 = 5e3
 
 # if random_effects:
 #    groups = np.concatenate(
@@ -297,5 +296,5 @@ print(av_names_big[mean_func])
 zero_func = np.where(mod.vv['beta'][Xempty_big.shape[1]:]!=0)[0]
 print(av_names_big[zero_func])
 
-df = pd.DataFrame([mod.vv['beta'][mean_func], av_names_big[mean_func]]).T
-df.sort_values(0)
+dfa = pd.DataFrame([mod.vv['beta'][mean_func], av_names_big[mean_func]]).T
+dfa.sort_values(0)
