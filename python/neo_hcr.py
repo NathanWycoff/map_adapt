@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 #  unpop_fit.py Author "Nathan Wycoff <nathanbrwycoff@gmail.com>" Date 01.16.2023
 
-# TODO: why now reduction achieves?
+# List:
+# big boi = True (and synth_int=True)
+# real data
+# zinb
 
 # Structured selection with hierarchical models a la Roth and Fischer
 import pickle
@@ -17,27 +20,36 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 print(sys.argv)
+
+manual = True
+
 #seed = int(sys.argv[1])
-for i in range(100):
-    print("Manual settings!")
-seed = 5
+if manual:
+    if len(sys.argv)>1:
+        for i in range(10):
+            print("Manual settings but arguments provided!")
+        quit()
+
+    for i in range(10):
+        print("Manual settings!")
+    seed = 5
 
 # seed = int(time()*100) % 10000
 # seed = 1900
 # np.random.seed(seed)
 np.random.seed(123)
 # lik = 'poisson'
-lik = 'zinb'
+#lik = 'zinb'
 # lik = 'nb'
-# lik = 'normal'
+lik = 'normal'
 use_tr = False
 #use_tr = True
 use_nest = False
-big_boi = True #Use quadratic model? 
+big_boi = False #Use quadratic model? 
+synthetic_interact = False
 
 sgd = True
 synthetic = True
-synthetic_interact = True
 momentum = False
 #momentum = True
 #LOG_PROX = False
@@ -82,7 +94,12 @@ if synthetic:
     else:
         lmu = df['pop_o']/np.max(df['pop_o']) + df['dist'] / np.max(df['dist'])
         lmu *= 5
-    y_dist = tfpd.Poisson(log_rate=lmu)
+    if lik=='poisson':
+        y_dist = tfpd.Poisson(log_rate=lmu)
+    elif lik=='normal':
+        y_dist = tfpd.Normal(loc=lmu, scale=1.)
+    else:
+        raise NotImplementedError()
     y = y_dist.sample(seed=key)
     print(np.max(y))
 else:
@@ -125,15 +142,13 @@ l2_coef = 0.  # TODO: Right value?
 # l2_coef = 0.  # TODO: Right value?
 # l2_coef=1e-1# TODO: Right value?
 verbose = False
-use_hier = True
-
-# tau0 = 1e6  # 440 nz
-# tau0 = 1e7
-# tau0 = np.power(seed,10)
+use_hier = big_boi
 
 #tau0 = np.logspace(5, 6, reps)[seed]
-tau0 = 1e4
-#tau0 = 1e5
+#tau0 = 1e4
+#tau0 = 1e0
+#tau0 = 1e2
+tau0 = 1e3
 
 # if random_effects:
 #    groups = np.concatenate(
@@ -241,9 +256,9 @@ def hier_prior_hurdle(x, pv, mod):
 
     return gamma_dens + me_dens + q_dens + i_dens
 
-# x = mod_big.vv['lam']
-# pv = mod_big.vv
-# mod = mod_big
+# x = mod.vv['lam']
+# pv = mod.vv
+# mod = mod
 
 mnll_smol = np.zeros(reps)
 mnll_big = np.zeros(reps)
@@ -257,21 +272,27 @@ y_train = y[inds_train]
 X_test = X[inds_test, :]
 y_test = y[inds_test]
 
-log_gamma = jnp.zeros(Pi)
-lam_prior_vars = {'log_gamma': log_gamma}
-#mod_big = jax_vlMAP(X_train, y_train, hier_prior_hurdle, lam_prior_vars, lik=lik, tau0=tau0, track=False, l2_coef=l2_coef, logprox=LOG_PROX, quad = True)
-mod_big = jax_vlMAP(X_train, y_train, adaptive_prior, lam_prior_vars, lik=lik, tau0=tau0, track=False, l2_coef=l2_coef, logprox=LOG_PROX, quad = True)
-print("Marginal Prior!")
-mod_big.fit(max_iters=1000, conv_thresh = -1)
+if use_hier:
+    log_gamma = jnp.zeros(Pi)
+    lam_prior_vars = {'log_gamma': log_gamma}
+    #mod = jax_vlMAP(X_train, y_train, hier_prior_hurdle, lam_prior_vars, lik=lik, tau0=tau0, track=False, l2_coef=l2_coef, logprox=LOG_PROX, quad = True)
+    prior = hier_prior_hurdle
+else:
+    print("Marginal Prior!")
+    lam_prior_vars = {}
+    #mod = jax_vlMAP(X_train, y_train, adaptive_prior, lam_prior_vars, lik=lik, tau0=tau0, track=False, l2_coef=l2_coef, logprox=LOG_PROX, quad = True)
+    prior = adaptive_prior
+mod = jax_vlMAP(X_train, y_train, prior, lam_prior_vars, lik = lik, tau0 = tau0, track = manual, mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience)
+mod.fit(max_iters=max_iters, verbose=True, lr_pre = lr, ada = ada, warm_up = True)
 
-mod_big.plot()
+mod.plot()
 
-np.sum(mod_big.vv['beta']!=0)
+print(np.sum(mod.vv['beta']!=0))
 
-mean_func = np.where(mod_big.vv['beta'][:Xempty_big.shape[1]]!=0)[0]
+mean_func = np.where(mod.vv['beta'][:Xempty_big.shape[1]]!=0)[0]
 print(av_names_big[mean_func])
-zero_func = np.where(mod_big.vv['beta'][Xempty_big.shape[1]:]!=0)[0]
+zero_func = np.where(mod.vv['beta'][Xempty_big.shape[1]:]!=0)[0]
 print(av_names_big[zero_func])
 
-df = pd.DataFrame([mod_big.vv['beta'][mean_func], av_names_big[mean_func]]).T
+df = pd.DataFrame([mod.vv['beta'][mean_func], av_names_big[mean_func]]).T
 df.sort_values(0)

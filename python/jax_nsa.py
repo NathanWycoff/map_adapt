@@ -360,7 +360,7 @@ class jax_vlMAP:
     def init_adam(self):
         return dict([(v,np.zeros_like(self.vv[v])) for v in self.vv]), dict([(v,np.zeros_like(self.vv[v])) for v in self.vv])
 
-    def fit(self, max_iters = 10000, lr_pre=1e-2, verbose = True, debug = np.inf, hoardlarge = False, ada = False):
+    def fit(self, max_iters = 10000, lr_pre=1e-2, verbose = True, debug = np.inf, hoardlarge = False, ada = False, warm_up = False):
         global GLOB_prox
         if ada:
             lr = lr_pre
@@ -454,7 +454,13 @@ class jax_vlMAP:
                 self.v_adam, self.vhat_adam, ss = self.adam_update_ss(self.v_adam, self.vhat_adam, adam_grad, self.vv, i)
             else:
                 ss = ss_ones
-            next_vv = get_vv_at(self.vv, sd, ss, lr, self.tau0)
+            wu_its = 5
+            if warm_up and i < wu_its:
+                wu_rates = np.logspace(-8,np.log10(lr),num=wu_its)
+                lr_use = wu_rates[i]
+            else:
+                lr_use = lr
+            next_vv = get_vv_at(self.vv, sd, ss, lr_use, self.tau0)
             #import IPython; IPython.embed()
             self.vv = next_vv
             self.last_it = i
