@@ -62,7 +62,9 @@ def get_vv_at(vv, sd, ss, lr, tau0):
     if GLOB_prox=='inv':
         new_beta, new_lam = jax_apply_prox_inv(new_vv['beta'], new_vv['lam'], tau0*lr*ss['beta'], tau0*lr*ss['lam'])
     elif GLOB_prox=='log':
-        new_beta, new_lam = jax_apply_prox_log(new_vv['beta'], new_vv['lam'], tau0*lr*ss['beta'], tau0*lr*ss['lam'], 1/tau0)
+        #new_beta, new_lam = jax_apply_prox_log(new_vv['beta'], new_vv['lam'], tau0*lr*ss['beta'], tau0*lr*ss['lam'], 1/tau0)
+        new_beta, new_lam = jax_apply_prox_log(new_vv['beta'], new_vv['lam'], tau0*lr*ss['beta'], tau0*lr*ss['lam'], 1)
+        print("We goobin")
         #(new_vv['beta'] / jnp.sqrt(tau0*lr*ss['beta']))[10741]
         #(tau0*lr*ss['beta'])[10741]
         #ss['beta'][10741]
@@ -294,7 +296,9 @@ class jax_vlMAP:
             def eval_prior_nonsmooth(vv, tau0):
                 ll = vv['lam']
                 npd_ns = tau0*jnp.sum(ll * jnp.abs(vv['beta']))
-                llp_uni = -jnp.sum(jnp.log(vv['lam'][self.do_pen]))
+                #llp_uni = -jnp.sum(jnp.log(vv['lam'][self.do_pen]))
+                llp_uni = -tau0*jnp.sum(jnp.log(vv['lam'][self.do_pen]))
+                print("we goobin")
                 return npd_ns + llp_uni
         elif GLOB_prox=='inv':
             def eval_prior_nonsmooth(vv, tau0):
@@ -463,9 +467,11 @@ class jax_vlMAP:
                 #    adam_grad[v] = self.N/self.mb_size*grad_nll[v] + grad_prior[v]
                 adam_grad = sd
                 self.v_adam, self.vhat_adam, ss = self.adam_update_ss(self.v_adam, self.vhat_adam, adam_grad, self.vv, i)
-                if limit_lam_ss:
-                    print("limiting ss")
-                    ss['lam'] = jnp.minimum(ss['lam'],ss['beta'])
+                #if limit_lam_ss:
+                #    print("limiting ss")
+                #    #ss['lam'] = jnp.minimum(ss['lam'],self.N*ss['beta'])
+                #    ss['lam'] = jnp.minimum(ss['lam'], 1.)
+                #    ss['beta'] = jnp.minimum(ss['beta'], 1.)
             else:
                 ss = ss_ones
             #wu_its = 5

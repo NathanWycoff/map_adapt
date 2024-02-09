@@ -53,8 +53,9 @@ if manual:
 
     tau_ind = 0
     seed = 0
-    #tau0 = 1e10
-    tau0 = 1e0
+    #tau0 = 1e4
+    tau0 = 1e2
+    #tau0 = 1e0
 else:
     tau_ind = int(sys.argv[1])
     seed = int(sys.argv[2])
