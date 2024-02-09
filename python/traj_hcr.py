@@ -22,8 +22,8 @@ from tqdm import tqdm
 
 print(sys.argv)
 
-#manual = True
-manual = False
+manual = True
+#manual = False
 
 exec(open('python/jax_nsa.py').read())
 exec(open('python/jax_hier_lib.py').read())
@@ -43,8 +43,7 @@ if LOG_PROX:
 else:
     GLOB_prox = 'std'
 
-#lr = 1e-3
-lr = 1e-4
+lr = 1e-3
 
 if manual:
     if len(sys.argv)>1:
@@ -55,7 +54,8 @@ if manual:
     seed = 0
     #tau_ind = 9
     #tau0 = 1e10
-    tau0 = 1e6
+    #tau0 = 1e6
+    #max_iters = 100
 else:
     tau_ind = int(sys.argv[1])
     seed = int(sys.argv[2])
@@ -63,10 +63,11 @@ else:
     #tau0 = np.logspace(4,6,num=n_tau)[tau_ind]
     #tau0 = np.logspace(4,np.log10(16681.005372),num=n_tau)[tau_ind]
     #tau0 = np.logspace(2,4,num=n_tau)[tau_ind]
-    tau0 = np.logspace(2,np.log10(774.263683),num=n_tau)[tau_ind]
+    #tau0 = np.logspace(2,np.log10(774.263683),num=n_tau)[tau_ind]
 l2_coef = 0.
 
-simid = str(tau_ind)+'_'+str(seed)
+#simid = str(tau_ind)+'_'+str(seed)
+simid = str(seed)
 
 key = jax.random.PRNGKey(seed)
 np.random.seed(seed+1)
@@ -153,38 +154,45 @@ else:
     lam_prior_vars = {}
     prior = adaptive_prior
 
-mod = jax_vlMAP(X_train, y_train, prior, lam_prior_vars, lik = lik, tau0 = tau0, track = manual, mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience, quad = big_boi, l2_coef = l2_coef)
-mod.fit(max_iters=max_iters, verbose=verbose, lr_pre = lr, ada = ada, warm_up = True, limit_lam_ss = True)
+#tau_use = np.flip(tau_range)
+tau_use = tau_range
 
-if manual:
-    mod.plot()
-else:
-    mod.plot('debug_out/'+simid+str(eu_only)+'.png')
+tau_try = tau_range[-1]
+mod = jax_vlMAP(X_train, y_train, prior, lam_prior_vars, lik = lik, tau0 = 1., track = manual, mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience, quad = big_boi, l2_coef = l2_coef)
+nlls = np.zeros(n_tau)
+df_means = []
+df_zeros = []
+for ti,tau0 in enumerate(tqdm(tau_use)):
+    print(tau0)
+    mod.set_tau0(tau_try)
+    mod.fit(max_iters=max_iters, verbose=False, lr_pre = lr, ada = ada, warm_up = True, limit_lam_ss = True)
 
-pred_nll = mod.big_nll(X_test, y_test)
+    mod.plot('debug_out/'+'hcr_'+str(eu_only)+'_'+str(np.round(tau0))+'.png')
 
-#print(np.sum(mod.vv['beta']!=0))
-#
-P = len(mod.vv['beta'])
-P2 = P//2
-mean_func = np.where(mod.vv['beta'][:P2]!=0)[0]
-#print(av_names_big[mean_func])
-zero_func = np.where(mod.vv['beta'][P2:]!=0)[0]
-#print(av_names_big[zero_func])
+    nlls[ti] = mod.big_nll(X_test, y_test)
 
-df_mean = pd.DataFrame([mod.vv['beta'][mean_func], av_names_big[mean_func]]).T
-df_zero = pd.DataFrame([mod.vv['beta'][P2+zero_func], av_names_big[zero_func]]).T
-#print(dfa.sort_values(0))
+    P = len(mod.vv['beta'])
+    P2 = P//2
+    mean_func = np.where(mod.vv['beta'][:P2]!=0)[0]
+    zero_func = np.where(mod.vv['beta'][P2:]!=0)[0]
 
-mod.nll_es
+    df_mean = pd.DataFrame([mod.vv['beta'][mean_func], av_names_big[mean_func]]).T
+    df_zero = pd.DataFrame([mod.vv['beta'][P2+zero_func], av_names_big[zero_func]]).T
+    df_means.append(df_mean)
+    df_zeros.append(df_zero)
 
-## Eval test
+    print("NZ:")
+    print(df_mean.shape[0] + df_zero.shape[0])
 
-resdf = pd.DataFrame({'nll' : [pred_nll], 'tau' : tau0,  'seed' : seed})
+    mod.nll_es
+
+resdf = pd.DataFrame({'nll' : nlls, 'tau' : tau_use})
+resdf['nnz'] = [df_means[i].shape[0] + df_zeros[i].shape[0] for i in range(n_tau)]
 fname = 'sim_out/'+simout_dir+simid
 if not manual:
-    df_mean.to_csv(fname+'_betas_mean.csv')
-    df_zero.to_csv(fname+'_betas_zero.csv')
-
+    #df_mean.to_csv(fname+'_betas_mean.csv')
+    #df_zero.to_csv(fname+'_betas_zero.csv')
     resdf.to_csv(fname+'_zinb_nll.csv')
-
+    
+    with open("pickles/traj_hcr_"+str(eu_only)+'.pdf', 'wb') as f:
+        pickle.dump([df_means, df_zeros, resdf], f)

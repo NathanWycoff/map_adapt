@@ -484,9 +484,9 @@ class jax_vlMAP:
                 lr_use = lr
             next_vv = get_vv_at(self.vv, sd, ss, lr_use, self.tau0)
 
-            print(i)
-            mb = np.max(np.abs(next_vv['beta']))
-            print(mb)
+            #print(i)
+            #mb = np.max(np.abs(next_vv['beta']))
+            #print(mb)
             #if mb > 0.:
             #    #print("Big beta!")
             #    print("NZ beta!")
