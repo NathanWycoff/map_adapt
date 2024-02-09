@@ -23,168 +23,53 @@ from tqdm import tqdm
 print(sys.argv)
 
 manual = True
+#manual = False
 
-# seed = int(time()*100) % 10000
-# seed = 1900
-# np.random.seed(seed)
-np.random.seed(123)
-# lik = 'poisson'
-#lik = 'zinb'
-# lik = 'nb'
-lik = 'normal'
-use_tr = False
-#use_tr = True
-use_nest = False
-big_boi = True #Use quadratic model? 
-synthetic_interact = big_boi
+exec(open('python/jax_nsa.py').read())
+exec(open('python/jax_hier_lib.py').read())
+exec(open('python/hcr_lib.py').read())
+exec(open('python/hcr_settings.py').read())
+exec(open('python/glmnet_wrapper.py').read())
 
-synthetic = True
-momentum = False
-#momentum = True
-#LOG_PROX = False
+lik = 'zinb'
+#lik = 'normal'
+
+verbose = True
+use_hier = big_boi
+
 LOG_PROX = True
 if LOG_PROX:
     GLOB_prox = 'log'
 else:
     GLOB_prox = 'std'
 
-random_effects = True
-eu_only = False
-#eu_only = True
+lr = 1e-3
 
-if eu_only:
-    if big_boi:
-        #lr = 1e-5
-        lr = 1e-4
-    else:
-        lr = 5e-3
-else:
-    if big_boi:
-        lr = 1e-5
-    else:
-        raise NotImplementedError()
-
-exec(open('python/jax_nsa.py').read())
-exec(open('python/jax_hier_lib.py').read())
-exec(open('python/sim_lib.py').read())
-exec(open('python/hcr_settings.py').read())
-exec(open('python/glmnet_wrapper.py').read())
-key = jax.random.PRNGKey(seed)
-
-#seed = int(sys.argv[1])
 if manual:
     if len(sys.argv)>1:
         for i in range(10):
             print("Manual settings but arguments provided!")
         quit()
 
-    for i in range(10):
-        print("Manual settings!")
-    seed = 5
-    #max_iters = 1500
-    es_patience = np.inf
-
-
-df = pd.read_csv('./data/hcr_impu1.csv').iloc[:, 1:]
-
-## Keep only european countries 
-europe_iso = [
-'ALB','AND','AUT','BLR','BEL','BIH','BGR','HRV','CYP','CZE','DNK','EST','FIN','FRA','DEU','GRC','HUN','ISL','IRL','ITA','KOS','LVA','LIE','LTU','LUX','MKD','MLT','MDA','MCO','MNE','NLD','NOR','POL','PRT','ROU','RUS','SMR','SRB','SVK','SVN','ESP','SWE','CHE','TUR','UKR','GBR','VAT'
-]
-#europe_iso = europe_iso[:(len(europe_iso)//5)]
-#europe_iso = europe_iso[:(len(europe_iso)//2)]
-
-df['dist'] = np.log(df['dist'])
-eu2eu = np.logical_and(df.iso_d.isin(europe_iso), df.iso_o.isin(europe_iso))
-if eu_only:
-    df = df.loc[eu2eu,:]
-
-realx = 'dist'
-if synthetic:
-    if synthetic_interact:
-        lmu = df['pop_o']/np.max(df['pop_o']) + df['dist'] / np.max(df['dist']) - df['pop_o']/np.max(df['pop_o'])*df['dist'] / np.max(df['dist'])
-        lmu *= 10
-        if not big_boi:
-            print("Warning: using interaction data in main effects model.")
-    else:
-        lmu = df['pop_o']/np.max(df['pop_o']) + df['dist'] / np.max(df['dist'])
-        lmu *= 5
-    if lik=='poisson':
-        y_dist = tfpd.Poisson(log_rate=lmu)
-    elif lik=='normal':
-        y_dist = tfpd.Normal(loc=lmu, scale=1.)
-    else:
-        raise NotImplementedError()
-    y = y_dist.sample(seed=key)
-    print(np.max(y))
+    tau_ind = 0
+    seed = 0
+    #tau0 = 1e10
+    tau0 = 1e0
 else:
-    y = np.array(df['newarrival'])
-    if lik == 'normal':
-        y = np.log(y+1)
+    tau_ind = int(sys.argv[1])
+    seed = int(sys.argv[2])
+    tau0 = np.logspace(6,8,num=n_tau)[tau_ind]
+l2_coef = 0.
 
-marg_vars = [x for x in df.columns[3:] if (
-    x[-2:] in ['_o', '_d'] and x not in ['Country_o', 'Country_d'])]
-dy_vars = list(df.columns[-8:])
-xcols = np.array(marg_vars+dy_vars)
-Xd = df[xcols]
+simid = str(tau_ind)+'_'+str(seed)
 
-X = np.array(Xd)
-Xi = X.copy()
-X = (X - np.mean(X, axis=0)[np.newaxis, :]) / np.std(X, axis=0)[np.newaxis, :]
+key = jax.random.PRNGKey(seed)
+np.random.seed(seed+1)
+X_train, y_train, X_test, y_test, xcols, re_names, av_names_big = get_data(big_boi, synthetic, eu_only)
 
-n_train = int(np.ceil(prop_train * X.shape[0]))
-
-if random_effects:
-    B = df.loc[:, ['iso_o', 'iso_d', 'year']]
-    B['year'] = B['year'].astype(str)
-    # Bd = pd.get_dummies(B, drop_first=True)
-    Bd = pd.get_dummies(B, drop_first=False)
-    X = np.concatenate([X, Bd], axis=1)
-    # dont_pen = np.arange(Xi.shape[1], X.shape[1])
-    # if lik == 'zinb':
-    #    dont_pen = np.concatenate([dont_pen, dont_pen+X.shape[1]])
-dont_pen = np.array([]).astype(int)
-
-re_names = [x+'_o' for x in list(set(B['iso_o']))] + \
-    [x+'_d' for x in list(set(B['iso_d']))]+list(set(B['year']))
-av_names = np.concatenate([xcols, re_names])
-
-# subsize = 200
-# subsize = np.inf
-
-#l2_coef = 1e-2  # TODO: Right value?
-l2_coef = 0.  # TODO: Right value?
-# l2_coef = 0.  # TODO: Right value?
-# l2_coef=1e-1# TODO: Right value?
-verbose = False
-use_hier = big_boi
-
-#tau0 = np.logspace(5, 6, reps)[seed]
-#tau0 = 1e3
-tau0 = 5e3
-
-# if random_effects:
-#    groups = np.concatenate(
-#        [np.arange(Xi.shape[1]), np.repeat(Xi.shape[1], X.shape[1] - Xi.shape[1])])
-#    groups = np.concatenate([groups, groups])
-# else:
-#    gg = np.arange(Xi.shape[1])
-#    groups = np.concatenate([gg, gg])
-
-Xempty = X[:0, :]
-Xempty_big = add_int_quad(Xempty, var_names=list(av_names))
-n_re = len(set(df['iso_d'])) + len(set(df['iso_d'])) + len(set(df['year']))
-#Xempty_big = Xempty_big.iloc[:, :-n_re]
-av_names_big = Xempty_big.columns
-# Xd
-yempty = np.array([])
-
-me_names = av_names_big[:X.shape[1]]
-int_names = av_names_big[X.shape[1]:-X.shape[1]]
-qu_names = av_names_big[-Xd.shape[1]:]
-
+## Set up hierarchical model.
 if use_hier:
-    Pu = Xempty.shape[1]
+    Pu = X_train.shape[1]
     Pnz = 1
     _, ngroups, P, v1, v2 = hier2nd_sparsity(Pu, Pnz)
 
@@ -192,24 +77,11 @@ if use_hier:
     Pq = Pu
     # P = Pu + Pi + Pq
 
-# def adaptive_prior(x, pv, mod):
-#    # lam_dist = tfpd.Cauchy(loc=1., scale=mod.P)
-#    #lam_dist = tfpd.Cauchy(loc=1., scale=1)
-#    lam_dist = tfpd.Cauchy(loc=X.shape[0], scale=1)
-#    lam_dens = -jnp.sum(lam_dist.log_prob(x)-jnp.log((1-lam_dist.cdf(0))))
-#    # lam_dens = -jnp.sum(lam_dist.log_prob(x))
-#    return lam_dens
-
 Pme = len(xcols)
 Pre = len(re_names)
 Pme_me = int(scipy.special.binom(Pme, 2))
 Pre_re = int(scipy.special.binom(Pre, 2))
 Pii = int(scipy.special.binom(Pre+Pme, 2))
-
-av = Xempty_big.columns
-x_me = av[:Pme] #X
-r_me = av[Pme:(Pme+Pre)] #r
-all_i = av[(Pme+Pre):(Pme+Pre+Pii)]
 
 #re_targets = dict([(re,[]) for re in re_names])
 re_invdict = {}
@@ -232,8 +104,6 @@ for ii,i in enumerate(av_names_big):
 
 re_invmap1 += 1
 re_invmap2 += 1
-#np.sum(re_invmap1==0)
-#np.sum(re_invmap2==0)
 
 # Standard hurdle prior
 def hier_prior_hurdle(x, pv, mod):
@@ -269,43 +139,46 @@ def hier_prior_hurdle(x, pv, mod):
 
     return gamma_dens + me_dens + q_dens + i_dens
 
-# x = mod.vv['lam']
-# pv = mod.vv
-# mod = mod
-
-mnll_smol = np.zeros(reps)
-mnll_big = np.zeros(reps)
-# for rep in range(reps):
-inds_train = np.random.choice(X.shape[0], n_train)
-inds_test = np.delete(np.arange(X.shape[0]), inds_train)
-X_train = X[inds_train, :]
-y_train = y[inds_train]
-X_test = X[inds_test, :]
-y_test = y[inds_test]
-
 if use_hier:
     log_gamma = jnp.zeros(Pi)
     lam_prior_vars = {'log_gamma': log_gamma}
-    #mod = jax_vlMAP(X_train, y_train, hier_prior_hurdle, lam_prior_vars, lik=lik, tau0=tau0, track=False, l2_coef=l2_coef, logprox=LOG_PROX, quad = True)
     prior = hier_prior_hurdle
 else:
     print("Marginal Prior!")
     lam_prior_vars = {}
-    #mod = jax_vlMAP(X_train, y_train, adaptive_prior, lam_prior_vars, lik=lik, tau0=tau0, track=False, l2_coef=l2_coef, logprox=LOG_PROX, quad = True)
     prior = adaptive_prior
-mod = jax_vlMAP(X_train, y_train, prior, lam_prior_vars, lik = lik, tau0 = tau0, track = (manual and not big_boi), mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience, quad = big_boi)
-mod.fit(max_iters=max_iters, verbose=True, lr_pre = lr, ada = ada, warm_up = True)
 
-mod.plot()
+mod = jax_vlMAP(X_train, y_train, prior, lam_prior_vars, lik = lik, tau0 = tau0, track = manual, mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience, quad = big_boi, l2_coef = l2_coef)
+mod.fit(max_iters=max_iters, verbose=verbose, lr_pre = lr, ada = ada, warm_up = True, limit_lam_ss = True)
 
-print(np.sum(mod.vv['beta']!=0))
+if manual:
+    mod.plot()
+else:
+    mod.plot('debug_out/'+simid+str(eu_only)+'.png')
 
-mean_func = np.where(mod.vv['beta'][:Xempty_big.shape[1]]!=0)[0]
-print(av_names_big[mean_func])
-zero_func = np.where(mod.vv['beta'][Xempty_big.shape[1]:]!=0)[0]
-print(av_names_big[zero_func])
+pred_nll = mod.big_nll(X_test, y_test)
 
-dfa = pd.DataFrame([mod.vv['beta'][mean_func], av_names_big[mean_func]]).T
-print(dfa.sort_values(0))
+#print(np.sum(mod.vv['beta']!=0))
+#
+P = len(mod.vv['beta'])
+P2 = P//2
+mean_func = np.where(mod.vv['beta'][:P2]!=0)[0]
+#print(av_names_big[mean_func])
+zero_func = np.where(mod.vv['beta'][P2:]!=0)[0]
+#print(av_names_big[zero_func])
+
+df_mean = pd.DataFrame([mod.vv['beta'][mean_func], av_names_big[mean_func]]).T
+df_zero = pd.DataFrame([mod.vv['beta'][P2+zero_func], av_names_big[zero_func]]).T
+#print(dfa.sort_values(0))
 
 mod.nll_es
+
+## Eval test
+
+resdf = pd.DataFrame({'nll' : [pred_nll], 'tau' : tau0,  'seed' : seed})
+fname = 'sim_out/'+simout_dir+simid
+if not manual:
+    df_mean.to_csv(fname+'_betas_mean.csv')
+    df_zero.to_csv(fname+'_betas_zero.csv')
+
+    resdf.to_csv(fname+'_zinb_nll.csv')

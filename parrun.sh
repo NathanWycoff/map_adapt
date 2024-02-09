@@ -1,5 +1,5 @@
 start=`date +%s`
-python python/clean_dir_make_args.py 
+python python/clean_dir_make_args.py small
 #parallel --jobs 20 --colsep ' ' --will-cite -a sim_args.txt python python/ada_sim.py
 #parallel --jobs 5 --colsep ' ' --will-cite -a sim_args.txt python python/ada_sim.py
 parallel --nice 5 --jobs 5 --colsep ' ' --will-cite -a sim_args.txt python python/ada_sim.py
