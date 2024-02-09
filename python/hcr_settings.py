@@ -2,7 +2,8 @@ import numpy as np
 
 #iters = 200
 #iters = 10000
-hcr_iters = 3
+#hcr_iters = 3
+hcr_iters = 1 # really reps not iters.
 #lr = 0.1
 #lr = 1e-2
 adam = True
@@ -13,12 +14,16 @@ decay_learn = True
 #reps = 10
 #n_tau = 5
 #n_tau = 2
-n_tau = 50
+#n_tau = 50
+n_tau = 10
 
-max_iters = 20000
+#max_iters = 20000
+#es_patience = 500
+max_iters = 5000
+es_patience = np.inf
+
 #max_iters = 10
 mb_size = 256
-es_patience = 500
 ada = True
 
 big_boi = True #Use quadratic model? 

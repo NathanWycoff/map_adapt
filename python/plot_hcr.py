@@ -21,13 +21,15 @@ all_files = list(dfs.keys())
 zf = [x for x in all_files if 'zinb' in x]
 zinb_df = pd.concat([dfs[x] for x in zf])
 
-cf = [x for x in all_files if 'comp' in x]
-comp_df = pd.concat([dfs[x] for x in cf])
-
 mf = [x for x in all_files if 'betas_mean' in x]
 mean_dfs = [dfs[x] for x in mf]
 
 zf = [x for x in all_files if 'betas_zero' in x]
 zero_dfs = [dfs[x] for x in zf]
 
+cf = [x for x in all_files if 'comp' in x]
+comp_df = pd.concat([dfs[x] for x in cf])
 
+mean_dfs[-1]
+
+zinb_df['nnz'] = [mean_dfs[i].shape[0]+zero_dfs[i].shape[0] for i in range(len(mean_dfs))]

@@ -22,8 +22,8 @@ from tqdm import tqdm
 
 print(sys.argv)
 
-manual = True
-#manual = False
+#manual = True
+manual = False
 
 exec(open('python/jax_nsa.py').read())
 exec(open('python/jax_hier_lib.py').read())
@@ -51,15 +51,18 @@ if manual:
             print("Manual settings but arguments provided!")
         quit()
 
-    tau_ind = 0
     seed = 0
-    #tau0 = 1e4
-    tau0 = 1e2
-    #tau0 = 1e0
+    #tau_ind = 9
+    #tau0 = 1e10
+    tau0 = 1e6
 else:
     tau_ind = int(sys.argv[1])
     seed = int(sys.argv[2])
-    tau0 = np.logspace(6,8,num=n_tau)[tau_ind]
+    #tau0 = np.logspace(0,4,num=n_tau)[tau_ind]
+    #tau0 = np.logspace(4,6,num=n_tau)[tau_ind]
+    #tau0 = np.logspace(4,np.log10(16681.005372),num=n_tau)[tau_ind]
+    #tau0 = np.logspace(2,4,num=n_tau)[tau_ind]
+    tau0 = np.logspace(2,np.log10(774.263683),num=n_tau)[tau_ind]
 l2_coef = 0.
 
 simid = str(tau_ind)+'_'+str(seed)
@@ -183,3 +186,4 @@ if not manual:
     df_zero.to_csv(fname+'_betas_zero.csv')
 
     resdf.to_csv(fname+'_zinb_nll.csv')
+
