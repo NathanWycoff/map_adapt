@@ -1,0 +1,8 @@
+## In synthetic studies:
+    # Center interactions?
+
+## In real data:
+better understand why beta00 is so smol in prefitting. -- Seems to be a property of zero inflated NB fit to data with big outliers.
+    # Center interactions?
+
+

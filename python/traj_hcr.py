@@ -173,6 +173,9 @@ df_zeros = []
 for ti,tau0 in enumerate(tqdm(tau_use)):
     mod.set_tau0(tau0)
 
+    for i in range(10):
+        print("Hey, set Nes to 0!")
+
     # Reset lam vars.
     mod.vv['lam'] = 0.*mod.vv['lam']+1.1
     for v in lam_prior_vars:
@@ -215,3 +218,4 @@ pd.merge(d0, d1, how = 'outer', on = 1)
 
 #print([x.iloc[:,0].abs().sort_values() for x in df_means])
 #print([x.iloc[:,0].abs().sort_values() for x in df_zeros])
+
