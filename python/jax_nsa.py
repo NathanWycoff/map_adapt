@@ -27,6 +27,8 @@ from tensorflow_probability.substrates import jax as tfp
 import optax
 tfpd = tfp.distributions
 
+goob_mode = False
+
 global GLOB_prox
 
 from jax.config import config
@@ -62,9 +64,11 @@ def get_vv_at(vv, sd, ss, lr, tau0):
     if GLOB_prox=='inv':
         new_beta, new_lam = jax_apply_prox_inv(new_vv['beta'], new_vv['lam'], tau0*lr*ss['beta'], tau0*lr*ss['lam'])
     elif GLOB_prox=='log':
-        #new_beta, new_lam = jax_apply_prox_log(new_vv['beta'], new_vv['lam'], tau0*lr*ss['beta'], tau0*lr*ss['lam'], 1/tau0)
-        new_beta, new_lam = jax_apply_prox_log(new_vv['beta'], new_vv['lam'], tau0*lr*ss['beta'], tau0*lr*ss['lam'], 1)
-        print("We goobin")
+        if goob_mode:
+            print("We goobin")
+            new_beta, new_lam = jax_apply_prox_log(new_vv['beta'], new_vv['lam'], tau0*lr*ss['beta'], tau0*lr*ss['lam'], 1)
+        else:
+            new_beta, new_lam = jax_apply_prox_log(new_vv['beta'], new_vv['lam'], tau0*lr*ss['beta'], tau0*lr*ss['lam'], 1/tau0)
         #(new_vv['beta'] / jnp.sqrt(tau0*lr*ss['beta']))[10741]
         #(tau0*lr*ss['beta'])[10741]
         #ss['beta'][10741]
@@ -75,8 +79,8 @@ def get_vv_at(vv, sd, ss, lr, tau0):
         #new_lam[10741]
     elif GLOB_prox=='std':
         new_beta, new_lam = jax_apply_prox(new_vv['beta'], new_vv['lam'], tau0*lr*ss['beta'], tau0*lr*ss['lam'])
-    new_vv['beta'] = new_beta
-    new_vv['lam'] = new_lam
+    new_vv['beta'] = jnp.where(ss['beta']>0, new_beta,  new_vv['beta'])
+    new_vv['lam'] = jnp.where(ss['lam']>0, new_lam, new_vv['lam'])
 
     return new_vv
 
@@ -113,7 +117,7 @@ class jax_vlMAP:
             self.ind1_exp = jnp.repeat(jnp.arange(Pu-1), 1+jnp.flip(jnp.arange(Pu-1)))
             self.ind2_exp = jnp.concatenate([jnp.arange(p+1, Pu) for p in range(Pu)])
 
-        self.N_es = min(N_es, X.shape[0]//2)
+        self.N_es = min(N_es, X.shape[0]//10)
         self.es_patience = es_patience # in iterations
         self.set_Xy(X, y)
 
@@ -296,9 +300,11 @@ class jax_vlMAP:
             def eval_prior_nonsmooth(vv, tau0):
                 ll = vv['lam']
                 npd_ns = tau0*jnp.sum(ll * jnp.abs(vv['beta']))
-                #llp_uni = -jnp.sum(jnp.log(vv['lam'][self.do_pen]))
-                llp_uni = -tau0*jnp.sum(jnp.log(vv['lam'][self.do_pen]))
-                print("we goobin")
+                if goob_mode:
+                    print("we goobin")
+                    llp_uni = -tau0*jnp.sum(jnp.log(vv['lam'][self.do_pen]))
+                else:
+                    llp_uni = -jnp.sum(jnp.log(vv['lam'][self.do_pen]))
                 return npd_ns + llp_uni
         elif GLOB_prox=='inv':
             def eval_prior_nonsmooth(vv, tau0):
@@ -367,7 +373,7 @@ class jax_vlMAP:
     def init_adam(self):
         return dict([(v,np.zeros_like(self.vv[v])) for v in self.vv]), dict([(v,np.zeros_like(self.vv[v])) for v in self.vv])
 
-    def fit(self, max_iters = 10000, lr_pre=1e-2, verbose = True, debug = np.inf, hoardlarge = False, ada = False, warm_up = False, limit_lam_ss = False):
+    def fit(self, max_iters = 10000, lr_pre=1e-2, verbose = True, debug = np.inf, hoardlarge = False, ada = False, warm_up = False, limit_lam_ss = False, prefit = False):
         global GLOB_prox
         if ada:
             lr = lr_pre
@@ -482,11 +488,16 @@ class jax_vlMAP:
                 lr_use = wu_rates[i]
             else:
                 lr_use = lr
+            if prefit:
+                for v in ['beta','lam']+list(self.lam_prior_vars.keys()):
+                    ss[v] *= 0
             next_vv = get_vv_at(self.vv, sd, ss, lr_use, self.tau0)
+            #import IPython; IPython.embed()
 
             #print(i)
-            #mb = np.max(np.abs(next_vv['beta']))
-            #print(mb)
+            #if not prefit:
+            #    mb = np.max(np.abs(next_vv['beta']))
+            #    print(mb)
             #if mb > 0.:
             #    #print("Big beta!")
             #    print("NZ beta!")
@@ -499,8 +510,8 @@ class jax_vlMAP:
 
         self.beta = self.vv['beta']
 
-        self.last_vv = self.vv
-        mod.vv = mod.best_vv
+        #self.last_vv = self.vv
+        #mod.vv = mod.best_vv
 
     def _predictive(self, XX, vv):
         if self.sigma2_exp:
@@ -528,6 +539,8 @@ class jax_vlMAP:
             dist_nz = tfpd.NegativeBinomial(total_count=1/jnp.square(stddev), logits = preds_y)
             dist_z = tfpd.Deterministic(loc=jnp.zeros_like(preds_y))
             pnz = tfpd.Categorical(logits=jnp.stack([preds_z,-preds_z]).T)
+            #sp = jax.nn.sigmoid(preds_z)
+            #pnz = tfpd.Categorical(probs=jnp.stack([sp,1.-sp]).T)
             dist_pred = tfpd.Mixture(pnz, components=[dist_z, dist_nz])
         else:
             raise Exception("Unrecognized Likelihood.")

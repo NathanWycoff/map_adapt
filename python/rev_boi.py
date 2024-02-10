@@ -44,7 +44,6 @@ else:
     GLOB_prox = 'std'
 
 lr = 1e-3
-#lr = 1e-4
 
 if manual:
     if len(sys.argv)>1:
@@ -53,12 +52,10 @@ if manual:
         quit()
 
     seed = 0
-    tau_ind = 9
+    #tau_ind = 9
     #tau0 = 1e10
     #tau0 = 1e6
-    tau0 = 1e5
-    #tau0 = 1e4
-    #tau0 = 1e3
+    #max_iters = 100
 else:
     tau_ind = int(sys.argv[1])
     seed = int(sys.argv[2])
@@ -66,10 +63,11 @@ else:
     #tau0 = np.logspace(4,6,num=n_tau)[tau_ind]
     #tau0 = np.logspace(4,np.log10(16681.005372),num=n_tau)[tau_ind]
     #tau0 = np.logspace(2,4,num=n_tau)[tau_ind]
-    tau0 = np.logspace(2,np.log10(774.263683),num=n_tau)[tau_ind]
+    #tau0 = np.logspace(2,np.log10(774.263683),num=n_tau)[tau_ind]
 l2_coef = 0.
 
-simid = str(tau_ind)+'_'+str(seed)
+#simid = str(tau_ind)+'_'+str(seed)
+simid = str(seed)
 
 key = jax.random.PRNGKey(seed)
 np.random.seed(seed+1)
@@ -156,43 +154,62 @@ else:
     lam_prior_vars = {}
     prior = adaptive_prior
 
-mod = jax_vlMAP(X_train, y_train, prior, lam_prior_vars, lik = lik, tau0 = tau0, track = manual, mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience, quad = big_boi, l2_coef = l2_coef)
+tau_use = np.flip(tau_range)
+#tau_use = tau_range
 
-mod.fit(max_iters=2000, prefit = True, verbose=verbose, lr_pre = 0.1, ada = ada, warm_up = True, limit_lam_ss = True)
+tau_try = tau_range[-1]
+mod = jax_vlMAP(X_train, y_train, prior, lam_prior_vars, lik = lik, tau0 = 1., track = manual, mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience, quad = big_boi, l2_coef = l2_coef)
+nlls = np.zeros(n_tau)
+
+## DRY1
+mod.fit(max_iters=max_iters, verbose=False, lr_pre = 1e-1, ada = ada, warm_up = True, prefit = True)
+## DRY1
+# prefit
 mod.plot('prefit.png')
 
-mod.fit(max_iters=max_iters, verbose=verbose, lr_pre = lr, ada = ada, warm_up = True, limit_lam_ss = True)
-print(np.sum(mod.beta!=0))
+#mod.set_tau0(1e3)
+mod.set_tau0(5e2)
+## DRY1
+mod.fit(max_iters=max_iters, verbose=False, lr_pre = 1e-4, ada = ada, warm_up = True)
+## DRY1
+mod.plot('fit.png')
+print(np.sum(mod.vv['beta']!=0))
 
-if manual:
-    mod.plot()
-else:
-    mod.plot('debug_out/'+simid+str(eu_only)+'.png')
+df_means = []
+df_zeros = []
+for ti,tau0 in enumerate(tqdm(tau_use)):
+    print(tau0)
+    mod.set_tau0(tau_try)
+    ## DRY1
+    mod.fit(max_iters=max_iters, verbose=False, lr_pre = lr, ada = ada, warm_up = True)
+    ## DRY1
 
-pred_nll = mod.big_nll(X_test, y_test)
+    mod.plot('debug_out/'+'hcr_'+str(eu_only)+'_'+str(np.round(tau0))+'.png')
 
-#print(np.sum(mod.vv['beta']!=0))
-#
-P = len(mod.vv['beta'])
-P2 = P//2
-mean_func = np.where(mod.vv['beta'][:P2]!=0)[0]
-#print(av_names_big[mean_func])
-zero_func = np.where(mod.vv['beta'][P2:]!=0)[0]
-#print(av_names_big[zero_func])
+    nlls[ti] = mod.big_nll(X_test, y_test)
 
-df_mean = pd.DataFrame([mod.vv['beta'][mean_func], av_names_big[mean_func]]).T
-df_zero = pd.DataFrame([mod.vv['beta'][P2+zero_func], av_names_big[zero_func]]).T
-#print(dfa.sort_values(0))
+    P = len(mod.vv['beta'])
+    P2 = P//2
+    mean_func = np.where(mod.vv['beta'][:P2]!=0)[0]
+    zero_func = np.where(mod.vv['beta'][P2:]!=0)[0]
 
-mod.nll_es
+    df_mean = pd.DataFrame([mod.vv['beta'][mean_func], av_names_big[mean_func]]).T
+    df_zero = pd.DataFrame([mod.vv['beta'][P2+zero_func], av_names_big[zero_func]]).T
+    df_means.append(df_mean)
+    df_zeros.append(df_zero)
 
-## Eval test
+    print("NZ:")
+    print(df_mean.shape[0] + df_zero.shape[0])
 
-resdf = pd.DataFrame({'nll' : [pred_nll], 'tau' : tau0,  'seed' : seed})
+    mod.nll_es
+
+resdf = pd.DataFrame({'nll' : nlls, 'tau' : tau_use})
+resdf['nnz'] = [df_means[i].shape[0] + df_zeros[i].shape[0] for i in range(n_tau)]
 fname = 'sim_out/'+simout_dir+simid
 if not manual:
-    df_mean.to_csv(fname+'_betas_mean.csv')
-    df_zero.to_csv(fname+'_betas_zero.csv')
-
+    #df_mean.to_csv(fname+'_betas_mean.csv')
+    #df_zero.to_csv(fname+'_betas_zero.csv')
     resdf.to_csv(fname+'_zinb_nll.csv')
-
+    
+    with open("pickles/traj_hcr_"+str(eu_only)+'.pdf', 'wb') as f:
+        pickle.dump([df_means, df_zeros, resdf], f)

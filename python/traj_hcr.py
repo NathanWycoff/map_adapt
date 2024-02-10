@@ -43,6 +43,9 @@ if LOG_PROX:
 else:
     GLOB_prox = 'std'
 
+#goob_mode = True
+goob_mode = False
+
 lr = 1e-3
 
 if manual:
@@ -154,37 +157,46 @@ else:
     lam_prior_vars = {}
     prior = adaptive_prior
 
-#tau_use = np.flip(tau_range)
-tau_use = tau_range
+tau_use = np.flip(tau_range)
+#tau_use = tau_range
 
 tau_try = tau_range[-1]
 mod = jax_vlMAP(X_train, y_train, prior, lam_prior_vars, lik = lik, tau0 = 1., track = manual, mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience, quad = big_boi, l2_coef = l2_coef)
 nlls = np.zeros(n_tau)
+
+#mod.fit(max_iters=max_iters, verbose=False, lr_pre = lr, ada = ada, warm_up = True, prefit = True)
+mod.fit(max_iters=200, prefit = True, verbose=verbose, lr_pre = 1., ada = ada, warm_up = True, limit_lam_ss = True)
+mod.plot('prefit.png')
+
 df_means = []
 df_zeros = []
 for ti,tau0 in enumerate(tqdm(tau_use)):
-    print(tau0)
-    mod.set_tau0(tau_try)
-    mod.fit(max_iters=max_iters, verbose=False, lr_pre = lr, ada = ada, warm_up = True, limit_lam_ss = True)
+    mod.set_tau0(tau0)
 
-    mod.plot('debug_out/'+'hcr_'+str(eu_only)+'_'+str(np.round(tau0))+'.png')
+    # Reset lam vars.
+    mod.vv['lam'] = 0.*mod.vv['lam']+1.1
+    for v in lam_prior_vars:
+        mod.vv[v] = jnp.copy(lam_prior_vars[v]) 
 
-    nlls[ti] = mod.big_nll(X_test, y_test)
+    mod.fit(max_iters=max_iters, verbose=True, lr_pre = lr, ada = ada, warm_up = True)
+
 
     P = len(mod.vv['beta'])
     P2 = P//2
     mean_func = np.where(mod.vv['beta'][:P2]!=0)[0]
     zero_func = np.where(mod.vv['beta'][P2:]!=0)[0]
-
     df_mean = pd.DataFrame([mod.vv['beta'][mean_func], av_names_big[mean_func]]).T
     df_zero = pd.DataFrame([mod.vv['beta'][P2+zero_func], av_names_big[zero_func]]).T
     df_means.append(df_mean)
     df_zeros.append(df_zero)
-
     print("NZ:")
     print(df_mean.shape[0] + df_zero.shape[0])
 
-    mod.nll_es
+    #mod.plot('debug_out/'+'hcr_'+str(eu_only)+'_'+str(np.round(tau0))+'.png')
+    mod.plot('debug_out/'+'hcr_'+str(eu_only)+'_'+str(ti)+'.png')
+
+    nlls[ti] = mod.big_nll(X_test, y_test)
+
 
 resdf = pd.DataFrame({'nll' : nlls, 'tau' : tau_use})
 resdf['nnz'] = [df_means[i].shape[0] + df_zeros[i].shape[0] for i in range(n_tau)]
@@ -196,3 +208,10 @@ if not manual:
     
     with open("pickles/traj_hcr_"+str(eu_only)+'.pdf', 'wb') as f:
         pickle.dump([df_means, df_zeros, resdf], f)
+
+d0 = df_means[0]
+d1 = df_means[1]
+pd.merge(d0, d1, how = 'outer', on = 1)
+
+#print([x.iloc[:,0].abs().sort_values() for x in df_means])
+#print([x.iloc[:,0].abs().sort_values() for x in df_zeros])
