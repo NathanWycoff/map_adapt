@@ -27,8 +27,9 @@ n_tau = 100
 #tau_range = np.logspace(2,3,num=n_tau)
 #tau_range = np.logspace(1,2*np.log10(50),num=2*n_tau)
 #tau_range = np.logspace(3,5,num=n_tau)
-tau_range = np.logspace(2.5,5,num=n_tau)
+tau_range = np.logspace(np.log10(750),5,num=n_tau)
 es_patience = np.inf
+lr = 1e-4
 
 #max_iters = 10
 mb_size = 256

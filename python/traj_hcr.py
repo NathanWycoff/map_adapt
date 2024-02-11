@@ -47,8 +47,6 @@ else:
 #goob_mode = True
 goob_mode = False
 
-lr = 1e-3
-
 if manual:
     if len(sys.argv)>1:
         for i in range(10):
