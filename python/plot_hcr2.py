@@ -22,6 +22,9 @@ res.index = res.name
 res = res.drop('name',axis=1)
 res = res.fillna(0)
 
+#res = res.iloc[:,:90]
+res = res.iloc[:,:85]
+
 fig = plt.figure()
 for i in res.index:
     plt.plot(res.loc[i,:])
