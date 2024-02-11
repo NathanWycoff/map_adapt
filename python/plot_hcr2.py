@@ -28,3 +28,4 @@ for i in res.index:
 plt.xscale('log')
 plt.savefig('traj.pdf')
 plt.close()
+

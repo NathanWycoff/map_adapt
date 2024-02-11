@@ -33,6 +33,7 @@ exec(open('python/glmnet_wrapper.py').read())
 
 lik = 'zinb'
 #lik = 'normal'
+make_plots = False
 
 verbose = True
 use_hier = big_boi
@@ -195,8 +196,9 @@ for ti,tau0 in enumerate(tqdm(tau_use)):
     print("NZ:")
     print(df_mean.shape[0] + df_zero.shape[0])
 
-    #mod.plot('debug_out/'+'hcr_'+str(eu_only)+'_'+str(np.round(tau0))+'.png')
-    mod.plot('debug_out/'+'hcr_'+str(eu_only)+'_'+str(ti)+'.png')
+    if make_plots:
+        #mod.plot('debug_out/'+'hcr_'+str(eu_only)+'_'+str(np.round(tau0))+'.png')
+        mod.plot('debug_out/'+'hcr_'+str(eu_only)+'_'+str(ti)+'.png')
 
     nlls[ti] = mod.big_nll(X_test, y_test)
 
@@ -204,13 +206,13 @@ for ti,tau0 in enumerate(tqdm(tau_use)):
 resdf = pd.DataFrame({'nll' : nlls, 'tau' : tau_use})
 resdf['nnz'] = [df_means[i].shape[0] + df_zeros[i].shape[0] for i in range(n_tau)]
 fname = 'sim_out/'+simout_dir+simid
-if not manual:
-    #df_mean.to_csv(fname+'_betas_mean.csv')
-    #df_zero.to_csv(fname+'_betas_zero.csv')
-    resdf.to_csv(fname+'_zinb_nll.csv')
-    
-    with open("pickles/traj_hcr_"+str(eu_only)+'.pdf', 'wb') as f:
-        pickle.dump([df_means, df_zeros, resdf], f)
+#if not manual:
+#df_mean.to_csv(fname+'_betas_mean.csv')
+#df_zero.to_csv(fname+'_betas_zero.csv')
+resdf.to_csv(fname+'_zinb_nll.csv')
+
+with open("pickles/traj_hcr_"+str(eu_only)+'.pdf', 'wb') as f:
+    pickle.dump([df_means, df_zeros, resdf], f)
 
 d0 = df_means[0]
 d1 = df_means[1]
