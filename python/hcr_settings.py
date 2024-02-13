@@ -17,8 +17,8 @@ decay_learn = True
 #n_tau = 50
 
 #tau_range = np.logspace(2,np.log10(774.263683),num=n_tau)
-#max_iters = 2500
-max_iters = 5000
+max_iters = 2500
+#max_iters = 5000
 #max_iters = 500
 n_tau = 100
 #n_tau = 10
