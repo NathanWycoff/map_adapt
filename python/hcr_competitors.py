@@ -27,8 +27,8 @@ exec(open('python/hcr_lib.py').read())
 exec(open('python/hcr_settings.py').read())
 exec(open('python/glmnet_wrapper.py').read())
 
-seed = int(sys.argv[1])
-# seed = 0
+# seed = int(sys.argv[1])
+seed = 0
 
 np.random.seed(seed+1)
 X_train, y_train, X_test, y_test, xcols, re_names, av_names_big = get_data(big_boi, synthetic, eu_only)
