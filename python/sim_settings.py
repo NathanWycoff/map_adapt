@@ -16,8 +16,8 @@ Ns = [10000]
 
 # setting 5-9 did not finish.
 
-#sim = 'synthetic'
-sim = 'libsvm'
+sim = 'synthetic'
+#sim = 'libsvm'
 beta_style = 'random'
 #beta_style = 'floor'
 #beta_style = 'fixed'
@@ -27,9 +27,9 @@ mb_size = 256
 es_patience = 500
 ada = True
 
-#sparsity_type = 'random' # Totally random sparsity
+sparsity_type = 'random' # Totally random sparsity
 #sparsity_type = 'group' #Group sparsity 
-sparsity_type = 'hier2nd' #Overlapping group sparsity for hierarchical model.
+#sparsity_type = 'hier2nd' #Overlapping group sparsity for hierarchical model.
 if sparsity_type=='random':
     lr = 1e-2
 elif sparsity_type=='group':
