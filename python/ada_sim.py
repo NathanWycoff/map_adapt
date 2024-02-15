@@ -83,7 +83,8 @@ if manual:
     #s_i = '0'
     #s_i = 'abalone'
     #s_i = 'heart'
-    s_i = 'diabetes'
+    #s_i = 'diabetes'
+    s_i = '3'
     seed = 0
     #models2try = ['sbl_hier','glmnet']
 else:
@@ -207,7 +208,9 @@ else:
     raise Exception("Dataset not recognized.")
 
 if sparsity_type=='random':
-    TAU0 = 0.1 * N
+    #TAU0 = 0.1 * N
+    #TAU0 = 0.015*N # Good for s_i=0,2
+    TAU0 = 0.05*N # Good for s_i=0,2
 elif sparsity_type=='group':
     #TAU0 = 0.020*N # Good for s_i=0,2
     print("new tau:")

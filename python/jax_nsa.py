@@ -133,6 +133,8 @@ class jax_vlMAP:
             self.mb_size = mb_size
         if self.mb_size >= self.N:
             self.mb_size = self.N
+        if self.mb_size == 0:
+            self.mb_size = 1
 
 
         self.is_stochastic = self.mb_size < self.N
@@ -221,37 +223,27 @@ class jax_vlMAP:
 
     def reset_vars(self):
         # NOTE: This is indeed X.shape[0], NOT N. (Oh, is it still tho?)
-        if self.X.shape[0] > 0:
-            if self.lik in ['poisson','nb']:
-                #beta0 = jnp.mean(jnp.log(self.y+0.5))
-                beta0 = jnp.log(jnp.mean(self.y))
-            elif self.lik=='zinb':
-                iz = np.array(self.y)==0
-                beta00 = jnp.mean(iz.astype(np.float64))
-                beta0 = jnp.mean(jnp.log(self.y[~iz]+0.5))
-            elif self.lik=='cauchy':
-                beta0 = jnp.median(self.y)
-            else:
-                beta0 = jnp.mean(np.array(self.y).astype(np.float64))
-
-            if self.lik in ['poisson','bernoulli','nb']:
-                sigma2 = jnp.array(1.)
-            elif self.lik in ['zinb']:
-                sigma2 = jnp.array(1.)
-            elif self.lik =='cauchy':
-                mu_hat = jnp.median(self.y)
-                sigma2 = jnp.median(jnp.abs(self.y - mu_hat))
-            else:
-                sigma2 = jnp.var(self.y)
+        if self.lik in ['poisson','nb']:
+            #beta0 = jnp.mean(jnp.log(self.y+0.5))
+            beta0 = jnp.log(jnp.mean(self.y))
+        elif self.lik=='zinb':
+            iz = np.array(self.y)==0
+            beta00 = jnp.mean(iz.astype(np.float64))
+            beta0 = jnp.mean(jnp.log(self.y[~iz]+0.5))
+        elif self.lik=='cauchy':
+            beta0 = jnp.median(self.y)
         else:
-            assert False
-            if self.beta0_init is None:
-                beta0 = jnp.array(0.)
-            else:
-                beta0 = jnp.array(self.beta0_init)
+            beta0 = jnp.mean(np.array(self.y).astype(np.float64))
+
+        if self.lik in ['poisson','bernoulli','nb']:
             sigma2 = jnp.array(1.)
-            if self.lik=='zinb':
-                beta00 = jnp.array(0.)
+        elif self.lik in ['zinb']:
+            sigma2 = jnp.array(1.)
+        elif self.lik =='cauchy':
+            mu_hat = jnp.median(self.y)
+            sigma2 = jnp.median(jnp.abs(self.y - mu_hat))
+        else:
+            sigma2 = jnp.var(self.y)
 
         if self.sigma2_exp:
             sigma2 = jnp.log(sigma2)
@@ -399,9 +391,10 @@ class jax_vlMAP:
         self.nll_es = np.zeros(es_num)*np.nan
 
         self.tracking = {}
+        track_smol = ['beta','lam']+list(self.lam_prior_vars.keys())
         if self.track:
             for v in self.vv:
-                    if self.quad and v in ['beta','lam']:
+                    if self.quad and v in track_smol:
                         self.tracking[v] = np.zeros((max_iters,self.Pu))
                     else:
                         self.tracking[v] = np.zeros((max_iters,)+self.vv[v].shape)
@@ -410,7 +403,7 @@ class jax_vlMAP:
 
             if self.tracking:
                 for v in self.vv:
-                    if self.quad and v in ['beta','lam']:
+                    if self.quad and v in track_smol:
                         self.tracking[v][i] = self.vv[v][:self.Pu]
                     else:
                         self.tracking[v][i] = self.vv[v]
@@ -489,7 +482,11 @@ class jax_vlMAP:
             else:
                 lr_use = lr
             if prefit:
-                for v in ['beta','lam']+list(self.lam_prior_vars.keys()):
+                pf_vars = ['beta','lam']+list(self.lam_prior_vars.keys())
+                #if 'beta00' in self.vv.keys():
+                #    pf_vars += ['beta00']
+                #    #print("Dropping beta00 from preinit.")
+                for v in pf_vars:
                     ss[v] *= 0
             next_vv = get_vv_at(self.vv, sd, ss, lr_use, self.tau0)
             #import IPython; IPython.embed()

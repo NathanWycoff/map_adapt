@@ -25,6 +25,7 @@ exec(open('python/hcr_lib.py').read())
 exec(open('python/hcr_settings.py').read())
 exec(open('python/glmnet_wrapper.py').read())
 
+### Synthetic zero inflated data.
 key = jax.random.PRNGKey(123)
 
 N = 1000
@@ -56,4 +57,38 @@ mod.fit(max_iters=2000, prefit = True, verbose=verbose, lr_pre = 0.1, ada = ada,
 
 mod.plot()
 
+### Real 
+#key = jax.random.PRNGKey(123)
+
+y = np.array(pd.read_csv("y_hcr.csv").iloc[:,1])
+
+N = y.shape[0]
+P = 0
+X = np.random.normal(size=[N,P])
+
+
+#preds_y = 5.
+#preds_z = 0.
+#
+#dist_nz = tfpd.NegativeBinomial(total_count=1/jnp.square(stddev), logits = preds_y)
+#dist_z = tfpd.Deterministic(loc=jnp.zeros_like(preds_y))
+#pnz = tfpd.Categorical(logits=jnp.stack([preds_z,-preds_z]).T)
+##sp = jax.nn.sigmoid(preds_z)
+##pnz = tfpd.Categorical(probs=jnp.stack([sp,1.-sp]).T)
+#dist_pred = tfpd.Mixture(pnz, components=[dist_z, dist_nz])
+#
+#y = dist_pred.sample(N, seed = key)
+
+#stddev = jnp.exp(1/2)
+#y = np.round(np.abs(np.random.normal(size=N) / np.random.normal(size=N)))
+#y *= np.random.choice([0,1],N)
+
+verbose = True
+
+#mod = jax_vlMAP(X, y, adaptive_prior, {}, lik = 'zinb', tau0 = 1., track = True, mb_size = 256, es_patience = np.inf)
+mod = jax_vlMAP(X, y, adaptive_prior, {}, lik = 'zinb', tau0 = 1., track = True, mb_size = 5000, es_patience = np.inf)
+
+mod.fit(max_iters=2000, prefit = True, verbose=verbose, lr_pre = 0.1, ada = ada, warm_up = True)
+
+mod.plot()
 
