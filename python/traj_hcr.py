@@ -181,11 +181,12 @@ for v in modpre.vv:
         mod.vv[v] = modpre.vv[v]
 #mod.fit(max_iters=max_iters, verbose=False, lr_pre = lr, ada = ada, warm_up = True, prefit = True)
 #mod.set_tau0(np.max(tau_range))
-mod.set_tau0(1e10)
+mod.set_tau0(1e4)
+#mod.set_tau0(1e10)
 #mod.set_tau0(1e14)
 mod.fit(max_iters=5*3000, verbose=True, lr_pre = lr, ada = ada, warm_up = True)
 
-mod.plot('rf.png')
+#mod.plot('rf.png')
 print(np.sum(mod.vv['beta']!=0))
 print("yeeee")
 #mod.vv['beta'][mod.vv['beta']!=0]

@@ -210,7 +210,8 @@ else:
 if sparsity_type=='random':
     #TAU0 = 0.1 * N
     #TAU0 = 0.015*N # Good for s_i=0,2
-    TAU0 = 0.05*N # Good for s_i=0,2
+    #TAU0 = 0.05*N # Good for s_i=0,2
+    TAU0 = 0.025*N # Good for s_i=0,2
 elif sparsity_type=='group':
     #TAU0 = 0.020*N # Good for s_i=0,2
     print("new tau:")

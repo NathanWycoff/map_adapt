@@ -15,8 +15,8 @@ ada = True
 
 big_boi = True #Use quadratic model? 
 synthetic = False
-#eu_only = True
-eu_only = False
+eu_only = True
+#eu_only = False
 
 if eu_only:
     tau_range = np.logspace(np.log10(750),5,num=n_tau)
