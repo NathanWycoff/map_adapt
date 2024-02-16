@@ -7,8 +7,8 @@ import numpy as np
 ## Params
 NN = 1000 #TODO: overwritten if libsvm.
 
-#iters = 30
-iters = 4
+iters = 30
+#iters = 4
 #iters = 2
 Ns = [10000]
 

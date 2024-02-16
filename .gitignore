@@ -10,3 +10,5 @@ sim_args.txt
 *.png
 *.swo
 *.swp
+
+y_hcr.csv
