@@ -7,8 +7,9 @@ import numpy as np
 ## Params
 NN = 1000 #TODO: overwritten if libsvm.
 
-iters = 30
-#iters = 4
+#iters = 30
+iters = 4
+print("Only 4 iters!")
 #iters = 2
 Ns = [10000]
 
@@ -17,8 +18,8 @@ Ns = [10000]
 
 # setting 5-9 did not finish.
 
-sim = 'synthetic'
-#sim = 'libsvm'
+#sim = 'synthetic'
+sim = 'libsvm'
 beta_style = 'random'
 #beta_style = 'floor'
 #beta_style = 'fixed'
@@ -27,10 +28,11 @@ max_iters = 20000
 mb_size = 256
 es_patience = 500
 ada = True
+#ada = False
 
-sparsity_type = 'random' # Totally random sparsity
+#sparsity_type = 'random' # Totally random sparsity
 #sparsity_type = 'group' #Group sparsity 
-#sparsity_type = 'hier2nd' #Overlapping group sparsity for hierarchical model.
+sparsity_type = 'hier2nd' #Overlapping group sparsity for hierarchical model.
 if sparsity_type=='random':
     lr = 1e-2
 elif sparsity_type=='group':
@@ -52,7 +54,9 @@ if sparsity_type=='random':
 elif sparsity_type=='group':
     models2try = ['sbl_ada','sbl_group','glmnet','MLGL','OLS']
 elif sparsity_type=='hier2nd':
-    models2try = ['sbl_ada','sbl_hier','glmnet','MLGL','OLS']
+    #models2try = ['sbl_ada','sbl_hier','glmnet','MLGL','OLS']
+    models2try = ['sbl_ada','sbl_hier','glmnet','OLS']
+    #models2try = ['sbl_ada','sbl_hier','OLS']
 else:
     raise Exception
 
@@ -101,15 +105,25 @@ for N in Ns:
     #settings += [(N,Pu,Pnz,'normal', 1e0),(N,Pu,Pnz,'poisson', 1e0),(N,Pu,Pnz,'cauchy', 1e0),(N,Pu,Pnz,'bernoulli', 1e0)]
     settings += [(N,Pu,Pnz,'normal', 1e0),(N,Pu,Pnz,'nb', 1e0),(N,Pu,Pnz,'cauchy', 1e0),(N,Pu,Pnz,'bernoulli', 1e0)]
 
-reg_problems = ['abalone','housing','bodyfat','mpg','triazines','mg','hcr_all','hcr_eu']
-class_problems = ['diabetes','australian','heart','covtype','mushrooms','phishing']
+reg_problems = ['abalone','housing','bodyfat','mpg','triazines','mg','hcr_all','hcr_eu','kin40k','keggu','year','bike','obesity','seoul','parkinsons','infra','wine']
+class_problems = ['diabetes','australian','heart','covtype','mushrooms','phishing','aids','rice','adult','spam','dropout','shop']
 #datasets_to_use = reg_problems + class_problems
 #datasets_to_use = ['abalone','housing','bodyfat','mpg','mg','diabetes','heart','covtype','mushrooms','phishing']
 #datasets_to_use = ['housing','bodyfat','mpg','mg','diabetes','australian','heart','covtype','mushrooms','phishing']
-datasets_to_use = ['housing','bodyfat','mpg','mg','diabetes','australian','heart','covtype','phishing']
-liks = {
-    'abalone' : 'poisson',
-}
+#datasets_to_use = ['housing','bodyfat','mpg','mg','diabetes','australian','heart','covtype','phishing']
+#datasets_to_use = ['kin40k','bodyfat','abalone','keggu','diabetes','australian','year','covtype','phishing']
+#datasets_to_use = ['kin40k','year','keggu']
+#datasets_to_use = reg_problems + class_problems
+#datasets_to_use = ['abalone','bike','obesity','seoul','parkinsons','aids','infra','rice','adult','wine','spam','dropout','shop']
+
+datasets_to_use = ['abalone','obesity','parkinsons','aids','rice','spam','dropout','shop']
+
+#datasets_to_use = ['abalone','bike','diabetes','']
+#liks = {
+#        #'abalone' : 'poisson',
+#        'abalone' : 'nb',
+#}
+liks = {}
 for v in class_problems:
     liks[v] = 'bernoulli'
 for v in set(datasets_to_use).difference(liks):

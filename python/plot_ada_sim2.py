@@ -174,7 +174,8 @@ else:
         for pp in range(len(prob_names)):
             s_i = prob_names[pp]
             #plt.subplot(5,2,pp+1)
-            plt.subplot(2,5,pp+1)
+            #plt.subplot(2,5,pp+1)
+            plt.subplot(2,6,pp+1)
 
             #tp = "N="+N+"; P="+P
             if targ=='MSE':
@@ -219,8 +220,8 @@ else:
             #if ii==0 or ii==1:
             if s_i in ['abalone','bodyfat']:
                 plt.yscale('log')
-                if s_i == 'abalone':
-                    ax.set_ylim(1,100)
+                #if s_i == 'abalone':
+                #    ax.set_ylim(1,100)
             if s_i == 'triazines':
                 ax.set_ylim(0,0.05)
             if s_i == 'pyrim':

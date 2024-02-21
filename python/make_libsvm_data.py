@@ -29,6 +29,8 @@ urls['covtype'] = ['https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/bina
 urls['mushrooms'] = ['https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/mushrooms']
 urls['phishing'] = ['https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/phishing']
 
+#no_norm_y = ['abalone']
+
 datasets = list(urls.keys())
 
 for ds in datasets:

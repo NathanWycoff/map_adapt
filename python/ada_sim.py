@@ -81,10 +81,24 @@ if manual:
     for i in range(10):
         print("Manual")
     #s_i = '0'
+    #s_i = 'bike'
+    #s_i = 'obesity'
+    s_i = 'seoul'
     #s_i = 'abalone'
+    #s_i = 'kin40k'
+    #s_i = 'keggu'
+    #lr = 5e-6
+    #lr = 1e-5
+    #lr = 1e-5
+    #lr = 1e-5
+    lr = 1e-3
+    ada = True
+    #max_iters = 1000
+    models2try = ['sbl_ada','OLS','glmnet']
+    #s_i = 'year'
     #s_i = 'heart'
     #s_i = 'diabetes'
-    s_i = '3'
+    #s_i = '3'
     seed = 0
     #models2try = ['sbl_hier','glmnet']
 else:
@@ -207,29 +221,37 @@ elif sim == 'libsvm':
 else:
     raise Exception("Dataset not recognized.")
 
-if sparsity_type=='random':
-    #TAU0 = 0.1 * N
-    #TAU0 = 0.015*N # Good for s_i=0,2
-    #TAU0 = 0.05*N # Good for s_i=0,2
-    TAU0 = 0.025*N # Good for s_i=0,2
-elif sparsity_type=='group':
-    #TAU0 = 0.020*N # Good for s_i=0,2
-    print("new tau:")
-    TAU0 = 0.015*N # Good for s_i=0,2
-elif sparsity_type=='hier2nd':
-    #TAU0 = 0.020*N # Good for s_i=0,2
-    print("new tau:")
-    TAU0 = 0.015*N # Good for s_i=0,2
+if sim=='synthetic':
+    if sparsity_type=='random':
+        #TAU0 = 0.1 * N
+        #TAU0 = 0.015*N # Good for s_i=0,2
+        #TAU0 = 0.05*N # Good for s_i=0,2
+        TAU0 = 0.025*N # Good for s_i=0,2
+    elif sparsity_type=='group':
+        #TAU0 = 0.020*N # Good for s_i=0,2
+        print("new tau:")
+        TAU0 = 0.015*N # Good for s_i=0,2
+    elif sparsity_type=='hier2nd':
+        #TAU0 = 0.020*N # Good for s_i=0,2
+        print("new tau:")
+        TAU0 = 0.015*N # Good for s_i=0,2
+    else:
+        raise NotImplementedError
+elif sim=='libsvm':
+    assert sparsity_type=='hier2nd'
+    #TAU0 = 1*N
+    #TAU0 = 0.015*N
+    TAU0 = 0.15*N # Abalone and bike liked this one.
+    #TAU0 = 1.5*N
+    #TAU0 = 0.5*N
+    print("Changed status")
 else:
-    raise NotImplementedError
+    raise Exception()
 
-#if manual:
-#    for i in range(10):
-#        print("Custom tau0!")
-#    #TAU0 = 0.020*N # Good for s_i=0,2
-#    #TAU0 = 0.010*N # Good for s_i=0,2
-#    #TAU0 = 1e-5*N
-#    #es_patience = 2000
+####
+####
+#ret = np.linalg.svd(X, full_matrices = False)
+#ret[1]
 
 ###############
 ###############
@@ -255,10 +277,12 @@ for ind, modname in enumerate(models2try):
         nzparams = 0
         nz_counter = 0
         while nzparams == 0:
-            mod = jax_vlMAP(X, y, prior, lam_prior_vars, lik = lik, tau0 = TAU0*np.power(0.9,nz_counter), track = manual, mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience)
+            mod = jax_vlMAP(X, y, prior, lam_prior_vars, lik = lik, tau0 = TAU0*np.power(0.5,nz_counter), track = manual, mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience, l2_coef = l2_coef)
             mod.fit(max_iters=max_iters, verbose=True, lr_pre = lr, ada = ada)
             nzparams = np.sum(mod.beta!=0)
             nz_counter += 1
+            if nzparams==0:
+                print("No nonzeros; restarting.")
         #mod.fit(c_relax = 0.5, max_iters = max_iters, pc = 'identity')
 
         if manual:
