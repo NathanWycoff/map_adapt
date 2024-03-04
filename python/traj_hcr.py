@@ -161,91 +161,90 @@ tau_use = np.flip(tau_range)
 #tau_use = tau_range
 
 ###
-modpre = jax_vlMAP(X_train[:,:0], y_train, adaptive_prior, {}, lik = 'zinb', tau0 = 1., track = True, mb_size = X_train.shape[0]//4, logprox = LOG_PROX, es_patience = es_patience, quad = False, l2_coef = l2_coef)
+modpre = jax_vlMAP(X_train[:,:0], y_train, adaptive_prior, {}, lik = 'zinb', tau0 = 1., track = True, mb_size = X_train.shape[0]//4, logprox = LOG_PROX, es_patience = es_patience, quad = False, l2_coef = l2_coef, N_es = 0)
 modpre.fit(max_iters=500, prefit = True, verbose=verbose, lr_pre = 0.1, ada = ada, warm_up = True)
 modpre.plot('prefit.png')
 ###
 
-####
-#mod = jax_vlMAP(X_train[:,:0], y_train, adaptive_prior, {}, lik = 'zinb', tau0 = 1., track = True, mb_size = mb_size, logprox = LOG_PROX, es_patience = es_patience, quad = False, l2_coef = l2_coef)
-#mod.fit(max_iters=500, prefit = True, verbose=verbose, lr_pre = 0.1, ada = ada, warm_up = True)
-#mod.plot()
-####
-
-lr = 1e-4
-#lr = 5e-4
-tau_try = tau_range[-1]
-mod = jax_vlMAP(X_train, y_train, prior, lam_prior_vars, lik = lik, tau0 = 1., track = manual, mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience, quad = big_boi, l2_coef = l2_coef)
-for v in modpre.vv:
-    if not v in ['lam','beta']:
-        mod.vv[v] = modpre.vv[v]
-#mod.fit(max_iters=max_iters, verbose=False, lr_pre = lr, ada = ada, warm_up = True, prefit = True)
-#mod.set_tau0(np.max(tau_range))
-mod.set_tau0(1e4)
-#mod.set_tau0(1e10)
-#mod.set_tau0(1e14)
-mod.fit(max_iters=5*3000, verbose=True, lr_pre = lr, ada = ada, warm_up = True)
-
-#mod.plot('rf.png')
-print(np.sum(mod.vv['beta']!=0))
-print("yeeee")
+#######
+### Range finding
+#lr = 1e-3
+##lr = 5e-4
+#tau_try = tau_range[-1]
+#mod = jax_vlMAP(X_train, y_train, prior, lam_prior_vars, lik = lik, tau0 = 1., track = manual, mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience, quad = big_boi, l2_coef = l2_coef)
+#for v in modpre.vv:
+#    if not v in ['lam','beta']:
+#        mod.vv[v] = modpre.vv[v]
+##mod.fit(max_iters=max_iters, verbose=False, lr_pre = lr, ada = ada, warm_up = True, prefit = True)
+##mod.set_tau0(np.max(tau_range))
+#mod.set_tau0(1e4)
+##mod.set_tau0(1e10)
+##mod.set_tau0(1e14)
+##mod.fit(max_iters=5*3000, verbose=True, lr_pre = lr, ada = ada, warm_up = True)
+#mod.fit(max_iters=1000, verbose=True, lr_pre = lr, ada = ada, warm_up = True)
+#
+##mod.plot('rf.png')
+#print(np.sum(mod.vv['beta']!=0))
+#print("yeeee")
 #mod.vv['beta'][mod.vv['beta']!=0]
+#print(av_names_big[np.where(mod.vv['beta']!=0)[0]])
 #mod.plot('prefit.png')
+#######
 
 #
 #mod.set_tau0(1e5)
 #mod.fit(max_iters=max_iters, verbose=True, lr_pre = lr, ada = ada, warm_up = True)
 
-#nlls = np.zeros(n_tau)
-#df_means = []
-#df_zeros = []
-#for ti,tau0 in enumerate(tqdm(tau_use)):
-#    mod.set_tau0(tau0)
-#
-#    for i in range(10):
-#        print("Hey, set Nes to 0!")
-#
-#    # Reset lam vars.
-#    mod.vv['lam'] = 0.*mod.vv['lam']+1.1
-#    for v in lam_prior_vars:
-#        mod.vv[v] = jnp.copy(lam_prior_vars[v]) 
-#
-#    mod.fit(max_iters=max_iters, verbose=True, lr_pre = lr, ada = ada, warm_up = True)
-#
-#
-#    P = len(mod.vv['beta'])
-#    P2 = P//2
-#    mean_func = np.where(mod.vv['beta'][:P2]!=0)[0]
-#    zero_func = np.where(mod.vv['beta'][P2:]!=0)[0]
-#    df_mean = pd.DataFrame([mod.vv['beta'][mean_func], av_names_big[mean_func]]).T
-#    df_zero = pd.DataFrame([mod.vv['beta'][P2+zero_func], av_names_big[zero_func]]).T
-#    df_means.append(df_mean)
-#    df_zeros.append(df_zero)
-#    print("NZ:")
-#    print(df_mean.shape[0] + df_zero.shape[0])
-#
-#    if make_plots:
-#        #mod.plot('debug_out/'+'hcr_'+str(eu_only)+'_'+str(np.round(tau0))+'.png')
-#        mod.plot('debug_out/'+'hcr_'+str(eu_only)+'_'+str(ti)+'.png')
-#
-#    nlls[ti] = mod.big_nll(X_test, y_test)
-#
-#
-#resdf = pd.DataFrame({'nll' : nlls, 'tau' : tau_use})
-#resdf['nnz'] = [df_means[i].shape[0] + df_zeros[i].shape[0] for i in range(n_tau)]
-#fname = 'sim_out/'+simout_dir+simid
-##if not manual:
-##df_mean.to_csv(fname+'_betas_mean.csv')
-##df_zero.to_csv(fname+'_betas_zero.csv')
-#resdf.to_csv(fname+'_zinb_nll.csv')
-#
-#with open("pickles/traj_hcr_"+str(eu_only)+'.pdf', 'wb') as f:
-#    pickle.dump([df_means, df_zeros, resdf], f)
-#
-#d0 = df_means[0]
-#d1 = df_means[1]
-#pd.merge(d0, d1, how = 'outer', on = 1)
-#
-##print([x.iloc[:,0].abs().sort_values() for x in df_means])
-##print([x.iloc[:,0].abs().sort_values() for x in df_zeros])
-#
+#mod = modpre
+mod = jax_vlMAP(X_train, y_train, prior, lam_prior_vars, lik = lik, tau0 = 1., track = manual, mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience, quad = big_boi, l2_coef = l2_coef)
+for v in modpre.vv:
+    if not v in ['lam','beta']:
+        mod.vv[v] = modpre.vv[v]
+
+nlls = np.zeros(n_tau)
+df_means = []
+df_zeros = []
+for ti,tau0 in enumerate(tqdm(tau_use)):
+    mod.set_tau0(tau0)
+
+    # Reset lam vars.
+    mod.vv['lam'] = 0.*mod.vv['lam']+1.1
+    for v in lam_prior_vars:
+        mod.vv[v] = jnp.copy(lam_prior_vars[v]) 
+
+    mod.fit(max_iters=max_iters, verbose=True, lr_pre = lr, ada = ada, warm_up = True)
+
+    P = len(mod.vv['beta'])
+    P2 = P//2
+    mean_func = np.where(mod.vv['beta'][:P2]!=0)[0]
+    zero_func = np.where(mod.vv['beta'][P2:]!=0)[0]
+    df_mean = pd.DataFrame([mod.vv['beta'][mean_func], av_names_big[mean_func]]).T
+    df_zero = pd.DataFrame([mod.vv['beta'][P2+zero_func], av_names_big[zero_func]]).T
+    df_means.append(df_mean)
+    df_zeros.append(df_zero)
+    print("NZ:")
+    print(df_mean.shape[0] + df_zero.shape[0])
+
+    if make_plots:
+        #mod.plot('debug_out/'+'hcr_'+str(eu_only)+'_'+str(np.round(tau0))+'.png')
+        mod.plot('debug_out/'+'hcr_'+str(eu_only)+'_'+str(ti)+'.png')
+
+    nlls[ti] = mod.big_nll(X_test, y_test)
+
+
+resdf = pd.DataFrame({'nll' : nlls, 'tau' : tau_use})
+resdf['nnz'] = [df_means[i].shape[0] + df_zeros[i].shape[0] for i in range(n_tau)]
+fname = 'sim_out/'+simout_dir+simid
+#if not manual:
+#df_mean.to_csv(fname+'_betas_mean.csv')
+#df_zero.to_csv(fname+'_betas_zero.csv')
+resdf.to_csv(fname+'_zinb_nll.csv')
+
+with open("pickles/traj_hcr_"+str(eu_only)+'.pdf', 'wb') as f:
+    pickle.dump([df_means, df_zeros, resdf], f)
+
+d0 = df_means[0]
+d1 = df_means[1]
+pd.merge(d0, d1, how = 'outer', on = 1)
+
+

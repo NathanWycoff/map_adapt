@@ -544,7 +544,7 @@ class jax_vlMAP:
         return dist_pred
 
     def big_nll(self, XX, yy):
-        if XX.shape[0] <= mb_size:
+        if XX.shape[0] <= self.mb_size:
             return self._predictive(XX, self.vv)
         else:
             nll = 0.

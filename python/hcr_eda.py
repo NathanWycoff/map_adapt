@@ -50,6 +50,7 @@ trans = lambda x: np.log10(x+1.)
 plt.figure(figsize=[10, 1.5*nr])
 cc = []
 cc_log = []
+cc2 = []
 for vi, v in enumerate(xcols):
     plt.subplot(nr, 4, vi+1)
     plt.hist(df[v])
@@ -57,12 +58,14 @@ for vi, v in enumerate(xcols):
 
     cc.append(np.corrcoef(df[v], trans(df['flow']))[0,1])
     cc_log.append(np.corrcoef(np.log10(df[v]+1), trans(df['flow']))[0,1])
+    cc2.append(np.corrcoef(np.square(np.log10(df[v]+1)), trans(df['flow']))[0,1])
 plt.tight_layout()
 plt.savefig("marg.png")
 plt.close()
 
 cc = pd.Series(cc, index = xcols)
 cc_log = pd.Series(cc_log, index = xcols)
+cc2 = pd.Series(cc2, index = xcols)
 
 dfd = pd.DataFrame({'cc':cc,'cl':cc_log})
 dfd['ratio'] = np.square(dfd['cc'] / dfd['cl'])

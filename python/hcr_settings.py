@@ -7,6 +7,7 @@ decay_learn = True
 
 max_iters = 2500
 n_tau = 100
+#n_tau = 10
 es_patience = np.inf
 
 #max_iters = 10
@@ -19,7 +20,8 @@ eu_only = True
 #eu_only = False
 
 if eu_only:
-    tau_range = np.logspace(np.log10(750),5,num=n_tau)
+    #tau_range = np.logspace(np.log10(750),5,num=n_tau)
+    tau_range = np.logspace(np.log10(750),4.2,num=n_tau)
     lr = 1e-3
 else:
     tau_range = np.logspace(np.log10(750),5,num=n_tau)
