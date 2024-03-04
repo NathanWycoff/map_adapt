@@ -74,7 +74,7 @@ simid = str(seed)
 
 key = jax.random.PRNGKey(seed)
 np.random.seed(seed+1)
-X_train, y_train, X_test, y_test, xcols, re_names, av_names_big = get_data(big_boi, synthetic, eu_only)
+X_train, y_train, X_test, y_test, xcols, re_names, av_names_big = get_data(big_boi, synthetic, eu_only, prop_train = prop_train)
 
 ## Set up hierarchical model.
 if use_hier:

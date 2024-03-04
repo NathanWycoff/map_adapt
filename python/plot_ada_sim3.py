@@ -17,8 +17,8 @@ for f in files:
 res = pd.concat(dfs)
 
 if sim=='libsvm':
-    #libsvm_second = False
-    libsvm_second = True
+    libsvm_second = False
+    #libsvm_second = True
     set_inds = np.sort(list(set(res['Setting'])))
     if libsvm_second:
         keepers = set_inds[len(set_inds)//2:]
@@ -49,7 +49,6 @@ set_inds = np.sort(list(set(res['Setting'])))
 S = len(set_inds)
 
 #cols = ['red','blue','orange','green','cyan','purple']
-
 
 fig = plt.figure(figsize=[10,6]) # To fit in article
 for ti,targ in enumerate(['MSE','Time']):

@@ -7,8 +7,8 @@ import numpy as np
 ## Params
 NN = 1000 #TODO: overwritten if libsvm.
 
-#iters = 30
-iters = 4
+iters = 30
+#iters = 4
 print("Only 4 iters!")
 #iters = 2
 Ns = [10000]
@@ -54,8 +54,8 @@ if sparsity_type=='random':
 elif sparsity_type=='group':
     models2try = ['sbl_ada','sbl_group','glmnet','MLGL','OLS']
 elif sparsity_type=='hier2nd':
-    #models2try = ['sbl_ada','sbl_hier','glmnet','MLGL','OLS']
-    models2try = ['sbl_ada','sbl_hier','glmnet','OLS']
+    models2try = ['sbl_ada','sbl_hier','glmnet','MLGL','OLS']
+    #models2try = ['sbl_ada','sbl_hier','glmnet','OLS']
     #models2try = ['sbl_ada','sbl_hier','OLS']
 else:
     raise Exception

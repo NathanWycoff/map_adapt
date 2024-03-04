@@ -240,8 +240,8 @@ if sim=='synthetic':
 elif sim=='libsvm':
     assert sparsity_type=='hier2nd'
     #TAU0 = 1*N
-    #TAU0 = 0.015*N
-    TAU0 = 0.15*N # Abalone and bike liked this one.
+    TAU0 = 0.015*N
+    #TAU0 = 0.15*N # Abalone and bike liked this one.
     #TAU0 = 1.5*N
     #TAU0 = 0.5*N
     print("Changed status")
@@ -321,23 +321,26 @@ for ind, modname in enumerate(models2try):
             beta_hat, preds = null_pred()
 
     elif modname in ['lasso','MLGL']: # Lassos
-        if modname == 'lasso':
-            grouped = False
-        elif modname == 'MLGL':
-            grouped = True
-        else:
-            raise Exception
-        if lik in ['normal','bernoulli']:
-            if grouped:
-                if sparsity_type=='group':
-                    group='yes'
-                elif sparsity_type=='hier2nd':
-                    group='hier'
-                else:
-                    raise Exception
+        if not (modname=='MLGL' and s_i=='spam' and seed > 4):
+            if modname == 'lasso':
+                grouped = False
+            elif modname == 'MLGL':
+                grouped = True
             else:
-                group='none'
-            beta_hat, preds = mlgl_fit_pred(X, y, XX, sigma_err, Pu, P, group = group, logistic = lik=='bernoulli')
+                raise Exception
+            if lik in ['normal','bernoulli']:
+                if grouped:
+                    if sparsity_type=='group':
+                        group='yes'
+                    elif sparsity_type=='hier2nd':
+                        group='hier'
+                    else:
+                        raise Exception
+                else:
+                    group='none'
+                beta_hat, preds = mlgl_fit_pred(X, y, XX, sigma_err, Pu, P, group = group, logistic = lik=='bernoulli')
+            else:
+                beta_hat, preds = null_pred()
         else:
             beta_hat, preds = null_pred()
     elif modname == 'ida_net':

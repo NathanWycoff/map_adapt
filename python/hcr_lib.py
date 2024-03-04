@@ -14,7 +14,7 @@ import sys
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-def get_data(big_boi, synthetic, eu_only, lik='zinb', dump_top = False, random_effects = True):
+def get_data(big_boi, synthetic, eu_only, lik='zinb', dump_top = False, random_effects = True, prop_train = 0.5, norm = True):
     df = pd.read_csv('./data/hcr_impu1.csv').iloc[:, 1:]
 
     synthetic_interact = big_boi
@@ -30,6 +30,16 @@ def get_data(big_boi, synthetic, eu_only, lik='zinb', dump_top = False, random_e
     eu2eu = np.logical_and(df.iso_d.isin(europe_iso), df.iso_o.isin(europe_iso))
     if eu_only:
         df = df.loc[eu2eu,:]
+
+    ## Drop redundant death vars.
+    df = df.drop(['dead_log_o','dead_o','dead_log_d','dead_d'], axis = 1)
+    
+
+    ## Log some vars
+    letslog = ['area','pop','best_est','Nyear_conflict']
+    for dy in ['_o','_d']:
+        v = [x+dy for x in letslog]
+        df[v] = np.log10(df[v]+1.)
 
     realx = 'dist'
     if synthetic:
@@ -54,7 +64,6 @@ def get_data(big_boi, synthetic, eu_only, lik='zinb', dump_top = False, random_e
         if lik == 'normal':
             y = np.log(y+1)
 
-
     marg_vars = [x for x in df.columns[3:] if (
         x[-2:] in ['_o', '_d'] and x not in ['Country_o', 'Country_d'])]
     dy_vars = list(df.columns[-8:])
@@ -63,7 +72,8 @@ def get_data(big_boi, synthetic, eu_only, lik='zinb', dump_top = False, random_e
 
     X = np.array(Xd)
     Xi = X.copy()
-    X = (X - np.mean(X, axis=0)[np.newaxis, :]) / np.std(X, axis=0)[np.newaxis, :]
+    if norm:
+        X = (X - np.mean(X, axis=0)[np.newaxis, :]) / np.std(X, axis=0)[np.newaxis, :]
 
     n_train = int(np.ceil(prop_train * X.shape[0]))
 
@@ -78,22 +88,10 @@ def get_data(big_boi, synthetic, eu_only, lik='zinb', dump_top = False, random_e
         #    dont_pen = np.concatenate([dont_pen, dont_pen+X.shape[1]])
     dont_pen = np.array([]).astype(int)
 
-    re_names = [x+'_o' for x in list(set(B['iso_o']))] + \
-        [x+'_d' for x in list(set(B['iso_d']))]+list(set(B['year']))
+    #re_names = [x+'_o' for x in list(set(B['iso_o']))] + \
+    #    [x+'_d' for x in list(set(B['iso_d']))]+list(set(B['year']))
+    re_names = list(Bd.columns)
     av_names = np.concatenate([xcols, re_names])
-
-    # subsize = 200
-    # subsize = np.inf
-
-
-
-    # if random_effects:
-    #    groups = np.concatenate(
-    #        [np.arange(Xi.shape[1]), np.repeat(Xi.shape[1], X.shape[1] - Xi.shape[1])])
-    #    groups = np.concatenate([groups, groups])
-    # else:
-    #    gg = np.arange(Xi.shape[1])
-    #    groups = np.concatenate([gg, gg])
 
     Xempty = X[:0, :]
     Xempty_big = add_int_quad(Xempty, var_names=list(av_names))
@@ -107,14 +105,6 @@ def get_data(big_boi, synthetic, eu_only, lik='zinb', dump_top = False, random_e
     int_names = av_names_big[X.shape[1]:-X.shape[1]]
     qu_names = av_names_big[-Xd.shape[1]:]
 
-    # x = mod.vv['lam']
-    # pv = mod.vv
-    # mod = mod
-
-    #fig = plt.figure()
-    #plt.hist(np.log10(y+1))
-    #plt.savefig("temp.pdf")
-    #plt.close()
     if dump_top:
         top_K = 200
         top_y = np.argpartition(y, -top_K)[-top_K:]
@@ -123,7 +113,7 @@ def get_data(big_boi, synthetic, eu_only, lik='zinb', dump_top = False, random_e
         X = X[keep_y,:]
 
     # for rep in range(reps):
-    inds_train = np.random.choice(X.shape[0], n_train)
+    inds_train = np.random.choice(X.shape[0], n_train, replace = False)
     inds_test = np.delete(np.arange(X.shape[0]), inds_train)
     X_train = X[inds_train, :]
     y_train = y[inds_train]
