@@ -17,7 +17,7 @@ def group_sparsity(Pu,Pnz):
     return nonzero
 
 # The matrix Gamma links main effects to the interaction terms including them.
-# Each row, of which there are P, gives indices of the interaction terms which it belongs to.
+# Each column, of which there are P, gives indices of the interaction terms which it belongs to.
 def make_gamma_mat(P):
     tops = []
     bots = []

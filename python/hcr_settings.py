@@ -5,7 +5,8 @@ adam = True
 prop_train = 0.5
 decay_learn = True
 
-max_iters = 2500
+#max_iters = 2500
+max_iters = 5000
 n_tau = 100
 #n_tau = 10
 es_patience = np.inf
@@ -22,7 +23,8 @@ eu_only = True
 if eu_only:
     #tau_range = np.logspace(np.log10(750),5,num=n_tau)
     tau_range = np.logspace(np.log10(750),4.2,num=n_tau)
-    lr = 1e-3
+    lr = 2e-3
+    #lr = 1e-2
 else:
     tau_range = np.logspace(np.log10(750),5,num=n_tau)
     lr = 1e-3

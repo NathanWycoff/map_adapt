@@ -4,6 +4,7 @@
 
 import pickle
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import pandas as pd
 from scipy.signal import medfilt
 from adjustText import adjust_text
@@ -11,7 +12,7 @@ import glob
 
 exec(open('python/hcr_settings.py').read())
 
-with open("pickles/traj_hcr_"+str(eu_only)+'.pdf', 'rb') as f:
+with open("pickles/traj_hcr_"+str(eu_only)+'.pkl', 'rb') as f:
     df_means, df_zeros, resdf = pickle.load(f)
 
 for i in range(len(df_means)):
@@ -27,7 +28,8 @@ res = res.fillna(0)
 
 for ii,v in enumerate(res.index):
     #plt.plot(res.columns, medfilt(res.loc[v,:],7), label = v)
-    res.loc[v,:] =  medfilt(res.loc[v,:],7)
+    #res.loc[v,:] =  medfilt(res.loc[v,:],7)
+    res.loc[v,:] =  medfilt(res.loc[v,:],15)
 
 # To aid visualization keep everthing close.
 #res = np.maximum(-0.5, np.minimum(0.5, res))
@@ -52,28 +54,27 @@ nll_ind = 53
 print("nll:")
 print(resdf['nll'][nll_ind])
 
-xlim = 80
+#xlim = 80
+#xlim = 100
+#xlim = 50
+xlim = 95
 
 fig = plt.figure(figsize=[5,2.5])
 texts = []
 objs = []
 cnt = 0
-topcol = ['red','blue','green','orange','purple','cyan']
+#topcol = ['red','blue','green','orange','purple','cyan']
+#nbigm = max(x.shape[0] for x in df_means)
+nbigm = 10
+nbigz = max(x.shape[0] for x in df_zeros)
+nbig = nbigm + nbigz
+cm =  mpl.colormaps['tab20']
+topcol = [cm(i/(nbig-1)) for i in range(nbig)]
 for ii,v in enumerate(res.index):
     #if ii in first_inds:
     vs = res.loc[v,:]
     indmax = np.argmax(np.abs(vs.iloc[:xlim]))
-    #if np.any(vs!=0) and np.where(vs!=0)[0][0] < xlim:
-    #    fnz = np.where(vs!=0)[0][0]
-    #    print(fnz)
-    #    print(ii)
-    #    print('--')
-    #    xv = res.columns[fnz]
-    #    #yv = np.abs(vs.iloc[indmax])*np.sign(vs.iloc[indmax])
-    #    yv = 0.25*np.power(-1,cnt)
-    #    cnt += 1
-    #    texts.append(plt.text(xv, yv, v, font = {'size' : 8}))
-    if np.any(vs!=0) and np.where(vs!=0)[0][0] < xlim:
+    if np.any(vs!=0) and np.where(vs!=0)[0][0] <= xlim:
         label = v
         col = topcol[cnt]
         cnt += 1
@@ -85,7 +86,7 @@ for ii,v in enumerate(res.index):
 plt.legend(prop={'size':6})
 ax = plt.gca()
 #labelLines(ax.get_lines(), zorder=2.5)
-ax.set_ylim(-0.3, 0.3)
+#ax.set_ylim(-0.3, 0.3)
 ll, ul = ax.get_ylim()
 #adjust_text(texts, arrowprops=dict(arrowstyle="->", color='r', lw=0.5), objects = objs, only_move={"text": "y", "static": "y", "explode": "y", "pull": "y"},)
 plt.vlines(resdf['tau'][nll_ind], ll, ul, linestyle='--', color = 'gray')

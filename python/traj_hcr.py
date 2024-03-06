@@ -34,7 +34,8 @@ exec(open('python/glmnet_wrapper.py').read())
 lik = 'zinb'
 #lik = 'nb'
 #lik = 'normal'
-make_plots = False
+#make_plots = False
+make_plots = True
 
 verbose = True
 use_hier = big_boi
@@ -114,36 +115,66 @@ for ii,i in enumerate(av_names_big):
 re_invmap1 += 1
 re_invmap2 += 1
 
-# Standard hurdle prior
+## Standard hurdle prior
+#def hier_prior_hurdle(x, pv, mod):
+#    gamma = jnp.exp(pv['log_gamma'])
+#    gamma_dist = tfpd.Cauchy(loc=mod.N, scale=1.)
+#    gamma_dens = -jnp.sum(gamma_dist.log_prob(gamma) -
+#                          jnp.log((1-gamma_dist.cdf(0))))
+#
+#    lam_sd = 1.
+#
+#    GAMMAt = make_gamma_mat(Pu).astype(int)
+#    gam_meq = jnp.min(gamma[GAMMAt], axis=0)
+#    # Hurdle model shares
+#    gam_meq = jnp.repeat(gam_meq, 2)
+#    meq_dist = tfpd.Normal(loc=gam_meq, scale=lam_sd)
+#    hurd_gamma = jnp.repeat(gamma, 2)
+#    i_dist = tfpd.Normal(loc=hurd_gamma, scale=lam_sd)
+#
+#    me_vanil = np.arange(Pu)
+#    me_inds = np.concatenate([me_vanil, P+me_vanil])
+#    q_vanil = np.arange(Pu+Pi, Pu+Pi+Pq)
+#    q_inds = np.concatenate([q_vanil, P+q_vanil])
+#    i_vanil = np.arange(Pu, Pu+Pi)
+#    i_inds = np.concatenate([i_vanil, P+i_vanil])
+#
+#    lam_me = x[me_inds]
+#    lam_q = x[q_inds]
+#    me_dens = -jnp.sum(meq_dist.log_prob(lam_me)-jnp.log(1-meq_dist.cdf(0)))
+#    q_dens = -jnp.sum(meq_dist.log_prob(lam_q)-jnp.log(1-meq_dist.cdf(0)))
+#
+#    lam_i = x[i_inds]
+#    i_dens = -jnp.sum(i_dist.log_prob(lam_i)-jnp.log(1-i_dist.cdf(0)))
+#
+#    return gamma_dens + me_dens + q_dens + i_dens
+
 def hier_prior_hurdle(x, pv, mod):
     gamma = jnp.exp(pv['log_gamma'])
-    gamma_dist = tfpd.Cauchy(loc=mod.N, scale=1.)
-    gamma_dens = -jnp.sum(gamma_dist.log_prob(gamma) -
-                          jnp.log((1-gamma_dist.cdf(0))))
+    gamma_dist = tfpd.Cauchy(loc=0., scale=1.)
+    gamma_dens = -jnp.sum(gamma_dist.log_prob(gamma)-jnp.log((1-gamma_dist.cdf(0))))
 
-    lam_sd = 1.
+    lam_sd = 1/jnp.sqrt(mod.N)
 
     GAMMAt = make_gamma_mat(Pu).astype(int)
-    gam_meq = jnp.min(gamma[GAMMAt], axis=0)
-    # Hurdle model shares
-    gam_meq = jnp.repeat(gam_meq, 2)
-    meq_dist = tfpd.Normal(loc=gam_meq, scale=lam_sd)
-    hurd_gamma = jnp.repeat(gamma, 2)
-    i_dist = tfpd.Normal(loc=hurd_gamma, scale=lam_sd)
 
-    me_vanil = np.arange(Pu)
-    me_inds = np.concatenate([me_vanil, P+me_vanil])
-    q_vanil = np.arange(Pu+Pi, Pu+Pi+Pq)
-    q_inds = np.concatenate([q_vanil, P+q_vanil])
-    i_vanil = np.arange(Pu, Pu+Pi)
-    i_inds = np.concatenate([i_vanil, P+i_vanil])
+    temp = 1/jnp.sqrt(Pu)
+    gam_meq_mean = jnp.apply_along_axis(lambda x: jnp.sum(jax.nn.softmax(-x/temp) * x), 0, gamma[GAMMAt])
+    gam_meq_all = jnp.concatenate([gam_meq_mean, gam_meq_mean]) # Same gammas shared by mean and zero terms.
+    meq_dist =  tfpd.Normal(loc=gam_meq_all, scale=lam_sd)
 
+    zeros_start = Pu+Pi+Pq
+    me_inds = jnp.concatenate([np.arange(Pu), np.arange(zeros_start, zeros_start+Pu)])
     lam_me = x[me_inds]
+    q_inds = jnp.concatenate([np.arange(Pu+Pi,Pu+Pi+Pq), np.arange(zeros_start+Pu+Pi, zeros_start+Pu+Pi+Pq)])
     lam_q = x[q_inds]
     me_dens = -jnp.sum(meq_dist.log_prob(lam_me)-jnp.log(1-meq_dist.cdf(0)))
     q_dens = -jnp.sum(meq_dist.log_prob(lam_q)-jnp.log(1-meq_dist.cdf(0)))
 
-    lam_i = x[i_inds]
+    q_inds = jnp.concatenate([np.arange(Pu,Pu+Pi), np.arange(zeros_start+Pu, zeros_start+Pu+Pi)])
+    lam_i = x[q_inds]
+    gam_i = jnp.concatenate([gamma,gamma])
+    i_dist =  tfpd.Normal(loc=gam_i, scale=lam_sd)
     i_dens = -jnp.sum(i_dist.log_prob(lam_i)-jnp.log(1-i_dist.cdf(0)))
 
     return gamma_dens + me_dens + q_dens + i_dens
@@ -168,7 +199,10 @@ modpre.plot('prefit.png')
 
 #######
 ### Range finding
-#lr = 1e-3
+#for i in range(100):
+#    print("range finding...")
+##lr = 1e-3
+#lr = 1e-2
 ##lr = 5e-4
 #tau_try = tau_range[-1]
 #mod = jax_vlMAP(X_train, y_train, prior, lam_prior_vars, lik = lik, tau0 = 1., track = manual, mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience, quad = big_boi, l2_coef = l2_coef)
@@ -186,7 +220,7 @@ modpre.plot('prefit.png')
 ##mod.plot('rf.png')
 #print(np.sum(mod.vv['beta']!=0))
 #print("yeeee")
-#mod.vv['beta'][mod.vv['beta']!=0]
+#print(mod.vv['beta'][mod.vv['beta']!=0])
 #print(av_names_big[np.where(mod.vv['beta']!=0)[0]])
 #mod.plot('prefit.png')
 #######
@@ -240,7 +274,7 @@ fname = 'sim_out/'+simout_dir+simid
 #df_zero.to_csv(fname+'_betas_zero.csv')
 resdf.to_csv(fname+'_zinb_nll.csv')
 
-with open("pickles/traj_hcr_"+str(eu_only)+'.pdf', 'wb') as f:
+with open("pickles/traj_hcr_"+str(eu_only)+'.pkl', 'wb') as f:
     pickle.dump([df_means, df_zeros, resdf], f)
 
 d0 = df_means[0]
