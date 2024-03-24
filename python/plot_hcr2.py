@@ -17,25 +17,34 @@ with open("pickles/traj_hcr_"+str(eu_only)+'.pkl', 'rb') as f:
 
 for i in range(len(df_means)):
     df_means[i].columns = [np.flip(tau_range)[i], 'name']
+for i in range(len(df_zeros)):
+    df_zeros[i].columns = [np.flip(tau_range)[i], 'name']
 
 res = df_means[0]
+res0 = df_zeros[0]
 for i in range(1,len(df_means)):
     res = pd.merge(res,df_means[i], how = 'outer', on = 'name')
+    res0 = pd.merge(res0,df_zeros[i], how = 'outer', on = 'name')
 
 res.index = res.name
 res = res.drop('name',axis=1)
 res = res.fillna(0)
+res0.index = res0.name
+res0 = res0.drop('name',axis=1)
+res0 = res0.fillna(0)
 
+medrad = 7
 for ii,v in enumerate(res.index):
-    #plt.plot(res.columns, medfilt(res.loc[v,:],7), label = v)
-    res.loc[v,:] =  medfilt(res.loc[v,:],7)
-    #res.loc[v,:] =  medfilt(res.loc[v,:],15)
+    res.loc[v,:] =  medfilt(res.loc[v,:],medrad)
+for ii,v in enumerate(res0.index):
+    res0.loc[v,:] =  medfilt(res0.loc[v,:],medrad)
 
 # To aid visualization keep everthing close.
 thresh = 0.75
 res = np.maximum(-thresh, np.minimum(thresh, res))
+res0 = np.maximum(-thresh, np.minimum(thresh, res0))
 
-#first_nz = np.where(res!=0)[1]
+##### Get first nonzero and order accordingly
 first_nz = np.zeros(res.shape[0]).astype(int)
 for i,v in enumerate(res.index):
     if np.any(res.loc[v,:]!=0):
@@ -48,12 +57,27 @@ first_nz[first_inds]
 order = [x for _, x in sorted(zip(first_nz, np.arange(res.shape[0])))]
 res = res.iloc[order,:]
 
+first_nz0 = np.zeros(res0.shape[0]).astype(int)
+for i,v in enumerate(res0.index):
+    if np.any(res0.loc[v,:]!=0):
+        first_nz0[i] = np.where(res0.loc[v,:] != 0)[0][0]
+    else:
+        first_nz0[i] = res0.shape[1]-1
+label_K = 5
+first_inds = np.argpartition(-first_nz0, -label_K)[-label_K:]
+first_nz0[first_inds]
+order = [x for _, x in sorted(zip(first_nz0, np.arange(res0.shape[0])))]
+res0 = res0.iloc[order,:]
+##### Get first nonzero and order accordingly
+
+
 #res = res.iloc[:,:90]
 #res = res.iloc[:,:85]
 #xlim = 85
 xlim = 90
 #xlim = 100
 res = res.iloc[:,:xlim]
+res0 = res0.iloc[:,:xlim]
 
 nll_ind = 53
 #nll_ind = 0
@@ -64,20 +88,16 @@ print(resdf['nll'][nll_ind])
 #xlim = 100
 #xlim = 50
 
-fig = plt.figure(figsize=[5,2.5])
-texts = []
-objs = []
+#fig = plt.figure(figsize=[5,2.5])
+fig = plt.figure(figsize=[5,5])
+
+plt.subplot(2,1,1)
 cnt = 0
-#topcol = ['red','blue','green','orange','purple','cyan']
 #nbigm = max(x.shape[0] for x in df_means)
 nbigm = 10
-#nbigz = max(x.shape[0] for x in df_zeros)
-nbigz = 1
-nbig = nbigm + nbigz
 cm =  mpl.colormaps['tab20']
-topcol = [cm(i/(nbig-1)) for i in range(nbig)]
+topcol = [cm(i/(nbigm-1)) for i in range(nbigm)]
 for ii,v in enumerate(res.index):
-    #if ii in first_inds:
     vs = res.loc[v,:]
     indmax = np.argmax(np.abs(vs.iloc[:xlim]))
     if np.any(vs!=0) and np.where(vs!=0)[0][0] <= xlim:
@@ -87,18 +107,38 @@ for ii,v in enumerate(res.index):
     else:
         label = None
         col = 'gray'
-    objs.append(plt.plot(res.columns, res.loc[v,:], label = label, color = col)[0])
-    #texts.append(plt.text(resdf['tau'][first_nz[ii]], np.abs(vs.iloc[indmax])*np.sign(vs.iloc[indmax]), 'x'))
+    plt.plot(res.columns, res.loc[v,:], label = label, color = col)[0]
 plt.legend(prop={'size':5}, loc = 'lower right')
 ax = plt.gca()
-#labelLines(ax.get_lines(), zorder=2.5)
-#ax.set_ylim(-0.3, 0.3)
 ll, ul = ax.get_ylim()
-#adjust_text(texts, arrowprops=dict(arrowstyle="->", color='r', lw=0.5), objects = objs, only_move={"text": "y", "static": "y", "explode": "y", "pull": "y"},)
 plt.vlines(resdf['tau'][nll_ind], ll, ul, linestyle='--', color = 'gray')
-#plt.vlines(res.columns[xlim], ll, ul, linestyle='--', color = 'gray')
-#plt.vlines(resdf['tau'][np.min(first_nz)], ll, ul, linestyle='--', color = 'gray')
 plt.xscale('log')
+plt.title("Means")
+
+plt.subplot(2,1,2)
+cnt = 0
+#nbigz = max(x.shape[0] for x in df_means)
+nbigz = 10
+cm =  mpl.colormaps['tab20']
+topcol = [cm(i/(nbigz-1)) for i in range(nbigz)]
+for ii,v in enumerate(res0.index):
+    vs = res0.loc[v,:]
+    indmax = np.argmax(np.abs(vs.iloc[:xlim]))
+    if np.any(vs!=0) and np.where(vs!=0)[0][0] <= xlim:
+        label = v
+        col = topcol[cnt]
+        cnt += 1
+    else:
+        label = None
+        col = 'gray'
+    plt.plot(res0.columns, res0.loc[v,:], label = label, color = col)[0]
+plt.legend(prop={'size':5}, loc = 'lower right')
+ax = plt.gca()
+ll, ul = ax.get_ylim()
+plt.vlines(resdf['tau'][nll_ind], ll, ul, linestyle='--', color = 'gray')
+plt.xscale('log')
+plt.title("Zeros")
+
 plt.savefig('traj'+str(eu_only)+'.pdf')
 plt.close()
 
