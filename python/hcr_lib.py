@@ -14,9 +14,11 @@ import sys
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-def get_data(big_boi, synthetic, eu_only, lik='zinb', dump_top = False, random_effects = True, prop_train = 0.5, norm = True):
+def get_data(expansion, synthetic, eu_only, lik='zinb', dump_top = False, random_effects = True, prop_train = 0.5, norm = True):
+    assert expansion in ['none','intr','quad']
     df = pd.read_csv('./data/hcr_impu1.csv').iloc[:, 1:]
 
+    big_boi = expansion in ['intr','quad']
     synthetic_interact = big_boi
 
     ## Keep only european countries 
@@ -94,7 +96,10 @@ def get_data(big_boi, synthetic, eu_only, lik='zinb', dump_top = False, random_e
     av_names = np.concatenate([xcols, re_names])
 
     Xempty = X[:0, :]
-    Xempty_big = add_int_quad(Xempty, var_names=list(av_names))
+    if expansion=='intr':
+        Xempty_big = add_int(Xempty, var_names=list(av_names))
+    else:
+        Xempty_big = add_int_quad(Xempty, var_names=list(av_names))
     n_re = len(set(df['iso_d'])) + len(set(df['iso_d'])) + len(set(df['year']))
     #Xempty_big = Xempty_big.iloc[:, :-n_re]
     av_names_big = Xempty_big.columns

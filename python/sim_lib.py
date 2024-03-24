@@ -41,6 +41,31 @@ def make_gamma_mat(P):
     gammat -= 1
     return gammat
 
+def add_int(Xu, var_names = None):
+    N,Pu = Xu.shape
+
+    if var_names is None:
+        var_names = ['X'+str(i) for i in range(Pu)]
+
+    Pi = int(scipy.special.binom(Pu,2))
+    P = Pu + Pi 
+
+    # Interactions
+    Xi = np.zeros([N,Pi])
+    ind = 0
+    int_name = []
+    for i in range(Pu-1):
+        for j in range(i+1,Pu):
+            Xi[:,ind] = Xu[:,i]*Xu[:,j]
+            ind += 1
+            int_name.append(var_names[i]+'-'+var_names[j])
+
+    X = np.concatenate([Xu,Xi,], axis = 1)
+    Xdf = pd.DataFrame(X)
+    Xdf.columns = var_names + int_name 
+
+    return Xdf
+
 def add_int_quad(Xu, var_names = None):
     N,Pu = Xu.shape
 

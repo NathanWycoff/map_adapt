@@ -34,9 +34,16 @@ global GLOB_prox
 from jax.config import config
 config.update("jax_enable_x64", True)
 
+# Go from a design matrix to the design mat with interaction terms.
+@jit
+def expand_X_int(Xs, ind1_exp, ind2_exp):
+    Xis = Xs[:, ind1_exp] * Xs[:, ind2_exp]
+    Xhs = jnp.concatenate([Xs, Xis], axis=1)
+    return Xhs
+
 # Go from a design matrix to the design mat with interaction and quadratic terms.
 @jit
-def expand_X(Xs, ind1_exp, ind2_exp):
+def expand_X_quad(Xs, ind1_exp, ind2_exp):
     Xis = Xs[:, ind1_exp] * Xs[:, ind2_exp]
     Xqs = Xs*Xs
     #Xqs = Xqs[:, :-n_re]  # Remove quadratic terms for indicator functions
@@ -95,7 +102,7 @@ class jax_vlMAP:
     auto_N_sg = 5000
     #auto_N_sg = 20000
 
-    def __init__(self, X, y, lam_prior, lam_prior_vars, big_N = None, tau0=1, lik='normal', mb_size = None, no_adapt = False, invlam = False, track = False, lam_accel = True, l2_coef = 0., dont_pen = None, do_jit = True, logprox = False, beta0_init = None, quad = False, N_es = 1000, es_patience = 500):
+    def __init__(self, X, y, lam_prior, lam_prior_vars, big_N = None, tau0=1, lik='normal', mb_size = None, no_adapt = False, invlam = False, track = False, lam_accel = True, l2_coef = 0., dont_pen = None, do_jit = True, logprox = False, beta0_init = None, intr = False, quad = False, N_es = 1000, es_patience = 500):
         self.lik = lik
         self.tau0 = tau0
         self.big_N = big_N
@@ -111,8 +118,10 @@ class jax_vlMAP:
         self.beta0_init = beta0_init 
         self.do_jit = do_jit
 
+        assert not (intr and quad)
+        self.intr = intr
         self.quad = quad
-        if self.quad:
+        if self.quad or self.intr:
             Pu = X.shape[1]
             self.ind1_exp = jnp.repeat(jnp.arange(Pu-1), 1+jnp.flip(jnp.arange(Pu-1)))
             self.ind2_exp = jnp.concatenate([jnp.arange(p+1, Pu) for p in range(Pu)])
@@ -120,8 +129,6 @@ class jax_vlMAP:
         self.N_es = min(N_es, X.shape[0]//10)
         self.es_patience = es_patience # in iterations
         self.set_Xy(X, y)
-
-        #assert not self.quad
 
         # Stochastic gradient settings.
         if mb_size is None:
@@ -198,8 +205,10 @@ class jax_vlMAP:
         ind_es = np.random.choice(N,self.N_es,replace=False)
         ind_train = np.setdiff1d(np.arange(N), ind_es)
         X_es = X[ind_es,:]
+        if self.intr:
+            X_es = expand_X_int(X_es, self.ind1_exp, self.ind2_exp)  # Create interaction terms just in time.
         if self.quad:
-            X_es = expand_X(X_es, self.ind1_exp, self.ind2_exp)  # Create interaction terms just in time.
+            X_es = expand_X_quad(X_es, self.ind1_exp, self.ind2_exp)  # Create interaction terms just in time.
         y_es = y[ind_es]
         X_train = X[ind_train,:]
         y_train = y[ind_train]
@@ -208,6 +217,8 @@ class jax_vlMAP:
 
         if self.quad:
             self.P = 2*self.Pu + int(scipy.special.binom(self.Pu, 2))
+        elif self.intr:
+            self.P = self.Pu + int(scipy.special.binom(self.Pu, 2))
         else:
             self.P = self.Pu
 
@@ -394,7 +405,7 @@ class jax_vlMAP:
         track_smol = ['beta','lam']+list(self.lam_prior_vars.keys())
         if self.track:
             for v in self.vv:
-                    if self.quad and v in track_smol:
+                    if (self.quad or self.intr) and v in track_smol:
                         self.tracking[v] = np.zeros((max_iters,self.Pu))
                     else:
                         self.tracking[v] = np.zeros((max_iters,)+self.vv[v].shape)
@@ -403,7 +414,7 @@ class jax_vlMAP:
 
             if self.tracking:
                 for v in self.vv:
-                    if self.quad and v in track_smol:
+                    if (self.quad or self.intr) and v in track_smol:
                         self.tracking[v][i] = self.vv[v][:self.Pu]
                     else:
                         self.tracking[v][i] = self.vv[v]
@@ -431,7 +442,9 @@ class jax_vlMAP:
                     Xs_vr = self.X[samp_vr, :]
                     ys_vr = self.y[samp_vr]
                     if self.quad:
-                        X_use_vr = expand_X(Xs_vr, self.ind1_exp, self.ind2_exp)  # Create interaction terms just in time.
+                        X_use_vr = expand_X_quad(Xs_vr, self.ind1_exp, self.ind2_exp)  # Create interaction terms just in time.
+                    elif self.intr:
+                        X_use_vr = expand_X_int(Xs_vr, self.ind1_exp, self.ind2_exp)  # Create interaction terms just in time.
                     else:
                         X_use_vr = Xs_vr  # Create interaction terms just in time.
                     _, grad_vr = self.eval_nll_grad_subset(self.vv0, X_use_vr, ys_vr)
@@ -443,7 +456,9 @@ class jax_vlMAP:
             Xs = self.X[ind,:]
             ys = self.y[ind]
             if self.quad:
-                Xs_use = expand_X(Xs, self.ind1_exp, self.ind2_exp)  # Create interaction terms just in time.
+                Xs_use = expand_X_quad(Xs, self.ind1_exp, self.ind2_exp)  # Create interaction terms just in time.
+            elif self.intr:
+                Xs_use = expand_X_int(Xs, self.ind1_exp, self.ind2_exp)  # Create interaction terms just in time.
             else:
                 Xs_use = Xs
             cost_nll, grad_nll = self.eval_nll_grad_subset(self.vv, Xs_use, ys)
@@ -554,7 +569,9 @@ class jax_vlMAP:
                 XXs = XX[samp_pred, :]
                 yys = yy[samp_pred]
                 if self.quad:
-                    XXs_use = expand_X(XXs, self.ind1_exp, self.ind2_exp)  # Create interaction terms just in time.
+                    XXs_use = expand_X_quad(XXs, self.ind1_exp, self.ind2_exp)  # Create interaction terms just in time.
+                elif self.intr:
+                    XXs_use = expand_X_int(XXs, self.ind1_exp, self.ind2_exp)  # Create interaction terms just in time.
                 else:
                     XXs_use = XXs# Create interaction terms just in time.
                 nll += -jnp.sum(self._predictive(XXs_use, self.vv).log_prob(yys))
@@ -572,7 +589,7 @@ class jax_vlMAP:
     #            samp_pred = np.arange(iti*self.mb_size,np.minimum((iti+1)*self.mb_size,XX.shape[0]))
     #            XXs = XX[samp_pred, :]
     #            if self.quad:
-    #                XXs_use = expand_X(XXs, self.ind1_exp, self.ind2_exp)  # Create interaction terms just in time.
+    #                XXs_use = expand_X_quad(XXs, self.ind1_exp, self.ind2_exp)  # Create interaction terms just in time.
     #            else:
     #                XXs_use = XXs# Create interaction terms just in time.
     #            dists.append(self._predictive(XXs_use, self.vv))

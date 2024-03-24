@@ -5,17 +5,23 @@ adam = True
 prop_train = 0.5
 decay_learn = True
 
-#max_iters = 2500
+# Full run.
 max_iters = 5000
 n_tau = 100
+
+## Short run.
+#max_iters = 2500
 #n_tau = 10
+
 es_patience = np.inf
 
 #max_iters = 10
 mb_size = 256
 ada = True
 
-big_boi = True #Use quadratic model? 
+#big_boi = True #Use quadratic model? 
+expansion = 'intr' 
+big_boi = expansion in ['intr','quad']
 synthetic = False
 eu_only = True
 #eu_only = False

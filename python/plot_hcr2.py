@@ -28,11 +28,12 @@ res = res.fillna(0)
 
 for ii,v in enumerate(res.index):
     #plt.plot(res.columns, medfilt(res.loc[v,:],7), label = v)
-    #res.loc[v,:] =  medfilt(res.loc[v,:],7)
-    res.loc[v,:] =  medfilt(res.loc[v,:],15)
+    res.loc[v,:] =  medfilt(res.loc[v,:],7)
+    #res.loc[v,:] =  medfilt(res.loc[v,:],15)
 
 # To aid visualization keep everthing close.
-#res = np.maximum(-0.5, np.minimum(0.5, res))
+thresh = 0.75
+res = np.maximum(-thresh, np.minimum(thresh, res))
 
 #first_nz = np.where(res!=0)[1]
 first_nz = np.zeros(res.shape[0]).astype(int)
@@ -47,17 +48,21 @@ first_nz[first_inds]
 order = [x for _, x in sorted(zip(first_nz, np.arange(res.shape[0])))]
 res = res.iloc[order,:]
 
-res = res.iloc[:,:90]
+#res = res.iloc[:,:90]
 #res = res.iloc[:,:85]
+#xlim = 85
+xlim = 90
+#xlim = 100
+res = res.iloc[:,:xlim]
 
 nll_ind = 53
+#nll_ind = 0
 print("nll:")
 print(resdf['nll'][nll_ind])
 
 #xlim = 80
 #xlim = 100
 #xlim = 50
-xlim = 95
 
 fig = plt.figure(figsize=[5,2.5])
 texts = []
@@ -66,7 +71,8 @@ cnt = 0
 #topcol = ['red','blue','green','orange','purple','cyan']
 #nbigm = max(x.shape[0] for x in df_means)
 nbigm = 10
-nbigz = max(x.shape[0] for x in df_zeros)
+#nbigz = max(x.shape[0] for x in df_zeros)
+nbigz = 1
 nbig = nbigm + nbigz
 cm =  mpl.colormaps['tab20']
 topcol = [cm(i/(nbig-1)) for i in range(nbig)]
@@ -83,7 +89,7 @@ for ii,v in enumerate(res.index):
         col = 'gray'
     objs.append(plt.plot(res.columns, res.loc[v,:], label = label, color = col)[0])
     #texts.append(plt.text(resdf['tau'][first_nz[ii]], np.abs(vs.iloc[indmax])*np.sign(vs.iloc[indmax]), 'x'))
-plt.legend(prop={'size':6})
+plt.legend(prop={'size':5}, loc = 'lower right')
 ax = plt.gca()
 #labelLines(ax.get_lines(), zorder=2.5)
 #ax.set_ylim(-0.3, 0.3)

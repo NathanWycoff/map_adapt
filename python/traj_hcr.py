@@ -18,6 +18,8 @@ from time import time
 import statsmodels.api as sm
 import sys
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
 from tqdm import tqdm
 
 print(sys.argv)
@@ -75,7 +77,7 @@ simid = str(seed)
 
 key = jax.random.PRNGKey(seed)
 np.random.seed(seed+1)
-X_train, y_train, X_test, y_test, xcols, re_names, av_names_big = get_data(big_boi, synthetic, eu_only, prop_train = prop_train)
+X_train, y_train, X_test, y_test, xcols, re_names, av_names_big = get_data(expansion, synthetic, eu_only, prop_train = prop_train)
 
 ## Set up hierarchical model.
 if use_hier:
@@ -149,6 +151,38 @@ re_invmap2 += 1
 #
 #    return gamma_dens + me_dens + q_dens + i_dens
 
+## With quadratic terms
+#def hier_prior_hurdle(x, pv, mod):
+#    gamma = jnp.exp(pv['log_gamma'])
+#    gamma_dist = tfpd.Cauchy(loc=0., scale=1.)
+#    gamma_dens = -jnp.sum(gamma_dist.log_prob(gamma)-jnp.log((1-gamma_dist.cdf(0))))
+#
+#    lam_sd = 1/jnp.sqrt(mod.N)
+#
+#    GAMMAt = make_gamma_mat(Pu).astype(int)
+#
+#    temp = 1/jnp.sqrt(Pu)
+#    gam_meq_mean = jnp.apply_along_axis(lambda x: jnp.sum(jax.nn.softmax(-x/temp) * x), 0, gamma[GAMMAt])
+#    gam_meq_all = jnp.concatenate([gam_meq_mean, gam_meq_mean]) # Same gammas shared by mean and zero terms.
+#    meq_dist =  tfpd.Normal(loc=gam_meq_all, scale=lam_sd)
+#
+#    zeros_start = Pu+Pi+Pq
+#    me_inds = jnp.concatenate([np.arange(Pu), np.arange(zeros_start, zeros_start+Pu)])
+#    lam_me = x[me_inds]
+#    q_inds = jnp.concatenate([np.arange(Pu+Pi,Pu+Pi+Pq), np.arange(zeros_start+Pu+Pi, zeros_start+Pu+Pi+Pq)])
+#    lam_q = x[q_inds]
+#    me_dens = -jnp.sum(meq_dist.log_prob(lam_me)-jnp.log(1-meq_dist.cdf(0)))
+#    q_dens = -jnp.sum(meq_dist.log_prob(lam_q)-jnp.log(1-meq_dist.cdf(0)))
+#
+#    i_inds = jnp.concatenate([np.arange(Pu,Pu+Pi), np.arange(zeros_start+Pu, zeros_start+Pu+Pi)])
+#    lam_i = x[i_inds]
+#    gam_i = jnp.concatenate([gamma,gamma])
+#    i_dist =  tfpd.Normal(loc=gam_i, scale=lam_sd)
+#    i_dens = -jnp.sum(i_dist.log_prob(lam_i)-jnp.log(1-i_dist.cdf(0)))
+#
+#    return gamma_dens + me_dens + q_dens + i_dens
+
+# With interaction terms
 def hier_prior_hurdle(x, pv, mod):
     gamma = jnp.exp(pv['log_gamma'])
     gamma_dist = tfpd.Cauchy(loc=0., scale=1.)
@@ -159,25 +193,23 @@ def hier_prior_hurdle(x, pv, mod):
     GAMMAt = make_gamma_mat(Pu).astype(int)
 
     temp = 1/jnp.sqrt(Pu)
-    gam_meq_mean = jnp.apply_along_axis(lambda x: jnp.sum(jax.nn.softmax(-x/temp) * x), 0, gamma[GAMMAt])
-    gam_meq_all = jnp.concatenate([gam_meq_mean, gam_meq_mean]) # Same gammas shared by mean and zero terms.
-    meq_dist =  tfpd.Normal(loc=gam_meq_all, scale=lam_sd)
+    gam_me_mean = jnp.apply_along_axis(lambda x: jnp.sum(jax.nn.softmax(-x/temp) * x), 0, gamma[GAMMAt])
+    gam_me_all = jnp.concatenate([gam_me_mean, gam_me_mean]) # Same gammas shared by mean and zero terms.
+    me_dist =  tfpd.Normal(loc=gam_me_all, scale=lam_sd)
 
-    zeros_start = Pu+Pi+Pq
+    zeros_start = Pu+Pi
     me_inds = jnp.concatenate([np.arange(Pu), np.arange(zeros_start, zeros_start+Pu)])
     lam_me = x[me_inds]
-    q_inds = jnp.concatenate([np.arange(Pu+Pi,Pu+Pi+Pq), np.arange(zeros_start+Pu+Pi, zeros_start+Pu+Pi+Pq)])
-    lam_q = x[q_inds]
-    me_dens = -jnp.sum(meq_dist.log_prob(lam_me)-jnp.log(1-meq_dist.cdf(0)))
-    q_dens = -jnp.sum(meq_dist.log_prob(lam_q)-jnp.log(1-meq_dist.cdf(0)))
+    me_dens = -jnp.sum(me_dist.log_prob(lam_me)-jnp.log(1-me_dist.cdf(0)))
 
-    q_inds = jnp.concatenate([np.arange(Pu,Pu+Pi), np.arange(zeros_start+Pu, zeros_start+Pu+Pi)])
-    lam_i = x[q_inds]
+    i_inds = jnp.concatenate([np.arange(Pu,Pu+Pi), np.arange(zeros_start+Pu, zeros_start+Pu+Pi)])
+    lam_i = x[i_inds]
     gam_i = jnp.concatenate([gamma,gamma])
     i_dist =  tfpd.Normal(loc=gam_i, scale=lam_sd)
     i_dens = -jnp.sum(i_dist.log_prob(lam_i)-jnp.log(1-i_dist.cdf(0)))
 
-    return gamma_dens + me_dens + q_dens + i_dens
+    return gamma_dens + me_dens + i_dens
+
 
 if use_hier:
     log_gamma = jnp.zeros(Pi)
@@ -229,8 +261,15 @@ modpre.plot('prefit.png')
 #mod.set_tau0(1e5)
 #mod.fit(max_iters=max_iters, verbose=True, lr_pre = lr, ada = ada, warm_up = True)
 
+quad = False
+intr = False
+if expansion=='intr':
+    intr = True
+if expansion=='quad':
+    quad = True
+
 #mod = modpre
-mod = jax_vlMAP(X_train, y_train, prior, lam_prior_vars, lik = lik, tau0 = 1., track = manual, mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience, quad = big_boi, l2_coef = l2_coef)
+mod = jax_vlMAP(X_train, y_train, prior, lam_prior_vars, lik = lik, tau0 = 1., track = manual, mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience, l2_coef = l2_coef, quad = quad, intr = intr)
 for v in modpre.vv:
     if not v in ['lam','beta']:
         mod.vv[v] = modpre.vv[v]
