@@ -98,8 +98,10 @@ def get_data(expansion, synthetic, eu_only, lik='zinb', dump_top = False, random
     Xempty = X[:0, :]
     if expansion=='intr':
         Xempty_big = add_int(Xempty, var_names=list(av_names))
+        print("A")
     else:
         Xempty_big = add_int_quad(Xempty, var_names=list(av_names))
+        print("B")
     n_re = len(set(df['iso_d'])) + len(set(df['iso_d'])) + len(set(df['year']))
     #Xempty_big = Xempty_big.iloc[:, :-n_re]
     av_names_big = Xempty_big.columns

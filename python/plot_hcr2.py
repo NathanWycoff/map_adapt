@@ -34,6 +34,7 @@ res0 = res0.drop('name',axis=1)
 res0 = res0.fillna(0)
 
 medrad = 7
+#medrad = 3
 for ii,v in enumerate(res.index):
     res.loc[v,:] =  medfilt(res.loc[v,:],medrad)
 for ii,v in enumerate(res0.index):
@@ -71,16 +72,11 @@ res0 = res0.iloc[order,:]
 ##### Get first nonzero and order accordingly
 
 
-#res = res.iloc[:,:90]
-#res = res.iloc[:,:85]
-#xlim = 85
-xlim = 90
-#xlim = 100
+xlim = 40
 res = res.iloc[:,:xlim]
 res0 = res0.iloc[:,:xlim]
 
-nll_ind = 53
-#nll_ind = 0
+nll_ind = 35
 print("nll:")
 print(resdf['nll'][nll_ind])
 
@@ -101,8 +97,12 @@ for ii,v in enumerate(res.index):
     vs = res.loc[v,:]
     indmax = np.argmax(np.abs(vs.iloc[:xlim]))
     if np.any(vs!=0) and np.where(vs!=0)[0][0] <= xlim:
-        label = v
-        col = topcol[cnt]
+        if cnt < len(topcol):
+            col = topcol[cnt]
+            label = v
+        else:
+            col = 'gray'
+            label = None
         cnt += 1
     else:
         label = None
@@ -125,8 +125,12 @@ for ii,v in enumerate(res0.index):
     vs = res0.loc[v,:]
     indmax = np.argmax(np.abs(vs.iloc[:xlim]))
     if np.any(vs!=0) and np.where(vs!=0)[0][0] <= xlim:
-        label = v
-        col = topcol[cnt]
+        if cnt < len(topcol):
+            col = topcol[cnt]
+            label = v
+        else:
+            col = 'gray'
+            label = None
         cnt += 1
     else:
         label = None
@@ -142,12 +146,12 @@ plt.title("Zeros")
 plt.savefig('traj'+str(eu_only)+'.pdf')
 plt.close()
 
-##
-files = sorted(glob.glob('sim_out/'+simout_dir+'*'))
-dfs = {}
-for f in files:
-    dfs[f.split('/')[-1]] = pd.read_csv(f, index_col = 0)
-
-all_files = list(dfs.keys())
-cf = [x for x in all_files if 'comp' in x]
-comp_df = pd.concat([dfs[x] for x in cf])
+###
+#files = sorted(glob.glob('sim_out/'+simout_dir+'*'))
+#dfs = {}
+#for f in files:
+#    dfs[f.split('/')[-1]] = pd.read_csv(f, index_col = 0)
+#
+#all_files = list(dfs.keys())
+#cf = [x for x in all_files if 'comp' in x]
+#comp_df = pd.concat([dfs[x] for x in cf])

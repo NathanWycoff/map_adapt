@@ -223,6 +223,13 @@ else:
 tau_use = np.flip(tau_range)
 #tau_use = tau_range
 
+quad = False
+intr = False
+if expansion=='intr':
+    intr = True
+if expansion=='quad':
+    quad = True
+
 ###
 modpre = jax_vlMAP(X_train[:,:0], y_train, adaptive_prior, {}, lik = 'zinb', tau0 = 1., track = True, mb_size = X_train.shape[0]//4, logprox = LOG_PROX, es_patience = es_patience, quad = False, l2_coef = l2_coef, N_es = 0)
 modpre.fit(max_iters=500, prefit = True, verbose=verbose, lr_pre = 0.1, ada = ada, warm_up = True)
@@ -231,42 +238,38 @@ modpre.plot('prefit.png')
 
 #######
 ### Range finding
-#for i in range(100):
+#for i in range(10):
 #    print("range finding...")
-##lr = 1e-3
-#lr = 1e-2
+#lr = 1e-3
+##lr = 1e-2
 ##lr = 5e-4
 #tau_try = tau_range[-1]
-#mod = jax_vlMAP(X_train, y_train, prior, lam_prior_vars, lik = lik, tau0 = 1., track = manual, mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience, quad = big_boi, l2_coef = l2_coef)
+#mod = jax_vlMAP(X_train, y_train, prior, lam_prior_vars, lik = lik, tau0 = 1., track = manual, mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience, quad = quad, intr = intr, l2_coef = l2_coef)
 #for v in modpre.vv:
 #    if not v in ['lam','beta']:
 #        mod.vv[v] = modpre.vv[v]
 ##mod.fit(max_iters=max_iters, verbose=False, lr_pre = lr, ada = ada, warm_up = True, prefit = True)
 ##mod.set_tau0(np.max(tau_range))
-#mod.set_tau0(1e4)
+##mod.set_tau0(tau_try)
+#mod.set_tau0(4000.)
 ##mod.set_tau0(1e10)
 ##mod.set_tau0(1e14)
 ##mod.fit(max_iters=5*3000, verbose=True, lr_pre = lr, ada = ada, warm_up = True)
 #mod.fit(max_iters=1000, verbose=True, lr_pre = lr, ada = ada, warm_up = True)
+##mod.fit(max_iters=5000, verbose=True, lr_pre = lr, ada = ada, warm_up = True)
 #
 ##mod.plot('rf.png')
 #print(np.sum(mod.vv['beta']!=0))
 #print("yeeee")
 #print(mod.vv['beta'][mod.vv['beta']!=0])
 #print(av_names_big[np.where(mod.vv['beta']!=0)[0]])
-#mod.plot('prefit.png')
-#######
+#mod.plot('rf.png')
+##for i in range(100):
+##    print("range finding...")
 
 #
 #mod.set_tau0(1e5)
 #mod.fit(max_iters=max_iters, verbose=True, lr_pre = lr, ada = ada, warm_up = True)
-
-quad = False
-intr = False
-if expansion=='intr':
-    intr = True
-if expansion=='quad':
-    quad = True
 
 #mod = modpre
 mod = jax_vlMAP(X_train, y_train, prior, lam_prior_vars, lik = lik, tau0 = 1., track = manual, mb_size = mb_size, logprox=LOG_PROX, es_patience = es_patience, l2_coef = l2_coef, quad = quad, intr = intr)
@@ -320,4 +323,5 @@ d0 = df_means[0]
 d1 = df_means[1]
 pd.merge(d0, d1, how = 'outer', on = 1)
 
+np.max(np.abs(df_means[0].iloc[:,0]))
 
