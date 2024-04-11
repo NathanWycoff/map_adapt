@@ -72,11 +72,13 @@ res0 = res0.iloc[order,:]
 ##### Get first nonzero and order accordingly
 
 
-xlim = 40
+#xlim = 40 # for 50
+xlim = 80
 res = res.iloc[:,:xlim]
 res0 = res0.iloc[:,:xlim]
 
-nll_ind = 35
+#nll_ind = 35 # for 50.
+nll_ind = 70
 print("nll:")
 print(resdf['nll'][nll_ind])
 

@@ -14,9 +14,11 @@ if eu_only:
     n_tau = 100
 else:
     max_iters = 3200
-    #n_tau = 100
+    n_tau = 100
     #n_tau = 25
-    n_tau = 50
+    #n_tau = 50
+    #n_tau = 2
+    #n_tau = 4
 
 ## Short run.
 ##max_iters = 2500
@@ -41,7 +43,7 @@ if eu_only:
     #lr = 1e-2
 else:
     #tau_range = np.logspace(np.log10(750),5,num=n_tau)
-    tau_range = np.logspace(np.log10(75000),5,num=n_tau)
+    tau_range = np.logspace(np.log10(24000),5,num=n_tau)
     #tau_range = np.logspace(5,6,num=n_tau)
     lr = 1e-3
 
