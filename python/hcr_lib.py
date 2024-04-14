@@ -36,7 +36,6 @@ def get_data(expansion, synthetic, eu_only, lik='zinb', dump_top = False, random
     ## Drop redundant death vars.
     df = df.drop(['dead_log_o','dead_o','dead_log_d','dead_d'], axis = 1)
     
-
     ## Log some vars
     letslog = ['area','pop','best_est','Nyear_conflict']
     for dy in ['_o','_d']:

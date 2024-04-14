@@ -303,7 +303,7 @@ for ti,tau0 in enumerate(tqdm(tau_use)):
 
     if make_plots:
         #mod.plot('debug_out/'+'hcr_'+str(eu_only)+'_'+str(np.round(tau0))+'.png')
-        mod.plot('debug_out/'+'hcr_'+str(eu_only)+'_'+str(ti)+'.png')
+        mod.plot('debug_out/'+'hcr_'+str(eu_only)+'_'+str(ti)+'_'+expansion+'.png')
 
     nlls[ti] = mod.big_nll(X_test, y_test)
 
@@ -314,9 +314,9 @@ fname = 'sim_out/'+simout_dir+simid
 #if not manual:
 #df_mean.to_csv(fname+'_betas_mean.csv')
 #df_zero.to_csv(fname+'_betas_zero.csv')
-resdf.to_csv(fname+'_zinb_nll.csv')
+resdf.to_csv(fname+'_zinb_nll_'+expansion+'.csv')
 
-with open("pickles/traj_hcr_"+str(eu_only)+'.pkl', 'wb') as f:
+with open("pickles/traj_hcr_"+str(eu_only)+'_'+expansion+'.pkl', 'wb') as f:
     pickle.dump([df_means, df_zeros, resdf], f)
 
 d0 = df_means[0]

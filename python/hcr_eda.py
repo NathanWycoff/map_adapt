@@ -29,13 +29,14 @@ exec(open('python/glmnet_wrapper.py').read())
 
 big_boi = False
 synthetic = False
-eu_only = True
+eu_only = False
 
 ## Load the data
 seed = 123
 key = jax.random.PRNGKey(seed)
 np.random.seed(seed+1)
-X_train, y_train, X_test, y_test, xcols, re_names, av_names_big = get_data(big_boi, synthetic, eu_only, prop_train = 1., norm = False)
+#X_train, y_train, X_test, y_test, xcols, re_names, av_names_big = get_data(big_boi, synthetic, eu_only, prop_train = 1., norm = False)
+X_train, y_train, X_test, y_test, xcols, re_names, av_names_big = get_data(expansion, synthetic, eu_only, prop_train = 1., norm = False)
 
 df = pd.DataFrame(X_train)
 df.columns = list(xcols) + re_names
@@ -75,3 +76,10 @@ cc_log.sort_values()
 cc.sort_values()
 
 letslog = ['area','pop','best_est_o','Nyear_conflict']
+
+## What is dist?
+df = pd.read_csv('./data/hcr_impu1.csv').iloc[:, 1:]
+origin = 'AFG'
+df.loc[np.logical_and(df.iso_o==origin,df.contig==1),['iso_d','dist']]
+## Evidently it is the distance between capitals in kilometers.
+

@@ -12,13 +12,15 @@ import glob
 
 exec(open('python/hcr_settings.py').read())
 
-with open("pickles/traj_hcr_"+str(eu_only)+'.pkl', 'rb') as f:
+with open("pickles/traj_hcr_"+str(eu_only)+'_'+expansion+'.pkl', 'rb') as f:
     df_means, df_zeros, resdf = pickle.load(f)
 
 for i in range(len(df_means)):
     df_means[i].columns = [np.flip(tau_range)[i], 'name']
+    df_means[i]['name'] = [x.replace('best_est','deaths') for x in df_means[i]['name']]
 for i in range(len(df_zeros)):
     df_zeros[i].columns = [np.flip(tau_range)[i], 'name']
+    df_zeros[i]['name'] = [x.replace('best_est','deaths') for x in df_zeros[i]['name']]
 
 res = df_means[0]
 res0 = df_zeros[0]
@@ -33,7 +35,8 @@ res0.index = res0.name
 res0 = res0.drop('name',axis=1)
 res0 = res0.fillna(0)
 
-medrad = 7
+#medrad = 7
+medrad = 15
 #medrad = 3
 for ii,v in enumerate(res.index):
     res.loc[v,:] =  medfilt(res.loc[v,:],medrad)
@@ -41,7 +44,8 @@ for ii,v in enumerate(res0.index):
     res0.loc[v,:] =  medfilt(res0.loc[v,:],medrad)
 
 # To aid visualization keep everthing close.
-thresh = 0.75
+#thresh = 0.75
+thresh = 100
 res = np.maximum(-thresh, np.minimum(thresh, res))
 res0 = np.maximum(-thresh, np.minimum(thresh, res0))
 
@@ -71,11 +75,10 @@ order = [x for _, x in sorted(zip(first_nz0, np.arange(res0.shape[0])))]
 res0 = res0.iloc[order,:]
 ##### Get first nonzero and order accordingly
 
-
 #xlim = 40 # for 50
 xlim = 80
-res = res.iloc[:,:xlim]
-res0 = res0.iloc[:,:xlim]
+res = res.iloc[:,1:xlim]
+res0 = res0.iloc[:,1:xlim]
 
 #nll_ind = 35 # for 50.
 nll_ind = 70
@@ -87,19 +90,25 @@ print(resdf['nll'][nll_ind])
 #xlim = 50
 
 #fig = plt.figure(figsize=[5,2.5])
-fig = plt.figure(figsize=[5,5])
+#fig = plt.figure(figsize=[1,1])
 
-plt.subplot(2,1,1)
+#plt.subplot(2,1,1)
+#fig, (a0, a1) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [2, 1]}, figsize=[5,3])
+fig, (a0, a1) = plt.subplots(1, 2, gridspec_kw={'width_ratios': [3, 1]}, figsize=[5,2])
+
+vline = 34
+
 cnt = 0
 #nbigm = max(x.shape[0] for x in df_means)
-nbigm = 10
-cm =  mpl.colormaps['tab20']
+#nbigm = 10
+nbigm = 4
+cm =  mpl.colormaps['tab20b']
 topcol = [cm(i/(nbigm-1)) for i in range(nbigm)]
 for ii,v in enumerate(res.index):
     vs = res.loc[v,:]
-    indmax = np.argmax(np.abs(vs.iloc[:xlim]))
+    indmax = np.argmax(np.abs(vs.iloc[1:xlim]))
     if np.any(vs!=0) and np.where(vs!=0)[0][0] <= xlim:
-        if cnt < len(topcol):
+        if cnt < nbigm:
             col = topcol[cnt]
             label = v
         else:
@@ -109,51 +118,30 @@ for ii,v in enumerate(res.index):
     else:
         label = None
         col = 'gray'
-    plt.plot(res.columns, res.loc[v,:], label = label, color = col)[0]
-plt.legend(prop={'size':5}, loc = 'lower right')
-ax = plt.gca()
-ll, ul = ax.get_ylim()
-plt.vlines(resdf['tau'][nll_ind], ll, ul, linestyle='--', color = 'gray')
-plt.xscale('log')
-plt.title("Means")
+    a0.plot(res.columns, res.loc[v,:], label = label, color = col)[0]
+a0.legend(prop={'size':5}, loc = 'upper right', framealpha=1.)
+ll, ul = a0.get_ylim()
+a0.vlines(resdf['tau'][vline], ll, ul, linestyle='--', color = 'gray')
+a0.set_xscale('log')
+a0.set_title("Hurdle Model Coefficient Trajectory", fontsize=8)
+a0.set_ylabel("Coefficent Estimates", fontsize = 8)
+#a0.set_xticks([])
+#a0.set_xticks([], minor=True)
+a0.set_xlabel(r"$\tau$")
 
-plt.subplot(2,1,2)
-cnt = 0
-#nbigz = max(x.shape[0] for x in df_means)
-nbigz = 10
-cm =  mpl.colormaps['tab20']
-topcol = [cm(i/(nbigz-1)) for i in range(nbigz)]
-for ii,v in enumerate(res0.index):
-    vs = res0.loc[v,:]
-    indmax = np.argmax(np.abs(vs.iloc[:xlim]))
-    if np.any(vs!=0) and np.where(vs!=0)[0][0] <= xlim:
-        if cnt < len(topcol):
-            col = topcol[cnt]
-            label = v
-        else:
-            col = 'gray'
-            label = None
-        cnt += 1
-    else:
-        label = None
-        col = 'gray'
-    plt.plot(res0.columns, res0.loc[v,:], label = label, color = col)[0]
-plt.legend(prop={'size':5}, loc = 'lower right')
-ax = plt.gca()
-ll, ul = ax.get_ylim()
-plt.vlines(resdf['tau'][nll_ind], ll, ul, linestyle='--', color = 'gray')
-plt.xscale('log')
-plt.title("Zeros")
+#plt.subplot(2,1,2)
+nll = medfilt(resdf['nll'],medrad)
+taus = resdf['tau']
+a1.plot(taus[1:xlim], nll[1:xlim])
+a1.set_xscale('log')
+a1.set_title("Predictive NLL", fontsize = 8)
+a1.set_xlabel(r"$\tau$")
+a1.set_ylim([np.min(nll), np.max(nll[1:xlim])])
+a1.tick_params(axis='both', which='major', labelsize=5)
+a1.tick_params(axis='both', which='minor', labelsize=5)
+a1.vlines(resdf['tau'][vline], np.min(nll), np.max(nll[1:xlim]), linestyle='--', color = 'gray')
+a1.set_xlim([np.min(taus[1:xlim]), np.max(taus[1:xlim])])
 
-plt.savefig('traj'+str(eu_only)+'.pdf')
+plt.tight_layout()
+plt.savefig('traj'+str(eu_only)+'_'+expansion+'.pdf')
 plt.close()
-
-###
-#files = sorted(glob.glob('sim_out/'+simout_dir+'*'))
-#dfs = {}
-#for f in files:
-#    dfs[f.split('/')[-1]] = pd.read_csv(f, index_col = 0)
-#
-#all_files = list(dfs.keys())
-#cf = [x for x in all_files if 'comp' in x]
-#comp_df = pd.concat([dfs[x] for x in cf])
