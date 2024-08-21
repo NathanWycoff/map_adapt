@@ -18,7 +18,7 @@ if not os.path.exists(staging_dir):
     os.makedirs(staging_dir)
 
 if not os.path.exists(data_dir):
-    os.makedirs(dat_dir)
+    os.makedirs(data_dir)
 
 #for ds in ['kin40k','keggu','year','wine-red','wine-white']:
 for ds in datasets_to_use:

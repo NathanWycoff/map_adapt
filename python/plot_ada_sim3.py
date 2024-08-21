@@ -26,7 +26,6 @@ if sim=='libsvm':
         keepers = set_inds[:len(set_inds)//2]
     res = res.loc[res['Setting'].isin(keepers),:]
 
-
 #methods = sorted(list(set(res['Method'])))
 methods = [x for x in model_colors.keys() if x in models2try]
 ncomp = len(methods)
@@ -80,6 +79,8 @@ for ti,targ in enumerate(['MSE','Time']):
             patch.set(facecolor = color)
 
         ax = plt.gca()
+        ax.set_xticklabels([])
+        ax.set_xticks([])
         #hshift = 0.2
         #ax.set_xticks([Ni*ncomp+(ncomp/2)-hshift for Ni in set_inds])
         #xlabs = [settings[int(x)][3].title() for x in set_inds]
@@ -115,42 +116,3 @@ plt.axis('off')
 plt.tight_layout()
 plt.savefig(sim+'_'+sparsity_type+"_legend.pdf")
 plt.close()
-
-### Table the LibSVM sim.
-#pre = r"\\textbf{"
-#post = "}"
-#summ = res.groupby(['Setting','Method']).agg(Time=('Time',np.median), LowerQuantile=('yy-MSE', lambda x: np.quantile(x, 0.1)), Median=('yy-MSE', np.median), UpperQuantile=('yy-MSE', lambda x: np.quantile(x, 0.9)), Nonzero=('nonzero',np.median))
-#summ.index.names = ['Dataset','Method']
-#
-## Scale all losses on bodyfat dataset to allow for consistent rounding.
-#summ.loc[summ.index.get_level_values('Dataset')=='bodyfat',['LowerQuantile','Median','UpperQuantile']] *= 1000
-#
-#targ = ['Median']
-#summ[targ] = summ[targ].round(4).astype(str)
-#
-#
-#summ.index = summ.index.set_levels([nice_names[x] if x in nice_names.keys() else x for x in summ.index.get_level_values('Method')], level = 1, verify_integrity=False)
-#
-#new_ind = list(summ.index)
-#for t in targ:
-#    for s in list(set(res['Setting'])):
-#        subset = summ.loc[s,t].astype(float)
-#        winner = subset.index[np.where(subset==np.min(subset))[0]]
-#        for w in winner:
-#            aa = pre+str(summ.loc[summ.index==(s,w),t][0])+post
-#            summ.loc[summ.index==(s,w),t] = aa
-#        new_ind = [(x[0],pre+str(x[1])+post) if x[0]==s and x[1] in winner else x for x in new_ind]
-#summ.index = pd.MultiIndex.from_tuples(new_ind)
-#
-#summ = summ.loc[~np.any(summ.isna(), axis = 1),:]
-#summ['Nonzero'] = summ['Nonzero'].astype(int)
-#
-#summ.index = summ.index.set_names(['Dataset','Method'])
-#
-#import re
-#with open('tables/'+sim+"_"+sparsity_type+'.txt', 'w') as f:
-#    ss = summ.to_latex()
-#    ss=re.sub(r"\\textbackslash \\textbackslash ",r"\\",ss)
-#    ss=re.sub(r"\\{",r"{",ss)
-#    ss=re.sub(r"\\}",r"}",ss)
-#    f.write(ss)

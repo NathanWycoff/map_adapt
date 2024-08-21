@@ -1,4 +1,7 @@
 .venv/
+pickles/
+staging/
+tables/
 sim_out/*
 debug_out/*
 data/*

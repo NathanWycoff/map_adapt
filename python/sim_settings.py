@@ -9,7 +9,6 @@ NN = 1000 #TODO: overwritten if libsvm.
 
 iters = 30
 #iters = 4
-print("Only 4 iters!")
 #iters = 2
 Ns = [10000]
 
